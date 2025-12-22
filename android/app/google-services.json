@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "1066739816321",
+    "project_id": "vetassist-d04ba",
+    "storage_bucket": "vetassist-d04ba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1066739816321:android:dc7e96a906ca47d0923a80",
+        "android_client_info": {
+          "package_name": "com.cafecircuit.vetassist"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1066739816321-nu6qmv825q1bnj25e8smprebsqp9ql02.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD9DJsq_yOIBRtkrlNvoGZzZIap-gsX6ks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1066739816321-nu6qmv825q1bnj25e8smprebsqp9ql02.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1066739816321-3djuh3tk2uk5dt0nab0fj06qn2osjgk4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.vetassist"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1066739816321:android:ed63887911fe4b4e923a80",
+        "android_client_info": {
+          "package_name": "com.example.vetassist"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1066739816321-nu6qmv825q1bnj25e8smprebsqp9ql02.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD9DJsq_yOIBRtkrlNvoGZzZIap-gsX6ks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1066739816321-nu6qmv825q1bnj25e8smprebsqp9ql02.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1066739816321-3djuh3tk2uk5dt0nab0fj06qn2osjgk4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.vetassist"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

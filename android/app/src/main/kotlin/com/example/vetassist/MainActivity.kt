@@ -1,0 +1,5 @@
+package com.cafecircuit.vetassist;
+
+import io.flutter.embedding.android.FlutterActivity;
+
+class MainActivity : FlutterActivity(){}
