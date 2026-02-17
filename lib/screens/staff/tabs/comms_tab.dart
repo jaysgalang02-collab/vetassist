@@ -10,10 +10,10 @@ class CommsTab extends StatefulWidget {
   const CommsTab({super.key, required this.clinicId, required this.staffUid});
 
   @override
-  State<CommsTab> createState() => _CommsTabState();
+  State<CommsTab> createState() => CommsTabState();
 }
 
-class _CommsTabState extends State<CommsTab> {
+class CommsTabState extends State<CommsTab> {
   _OwnerOption? _selectedCustomer;
   String? _selectedPatientId;
 
@@ -112,7 +112,10 @@ class _CommsTabState extends State<CommsTab> {
     }
   }
 
-  Future<void> _openConversation(_OwnerOption owner) async {
+  Future<void> _openConversation(
+    _OwnerOption owner, {
+    String? focusMessageId,
+  }) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -124,9 +127,37 @@ class _CommsTabState extends State<CommsTab> {
           owner: owner,
           clinicId: widget.clinicId,
           staffUid: widget.staffUid,
+          focusMessageId: focusMessageId,
         ),
       ),
     );
+  }
+
+  Future<void> focusMessageFromNotification(String messageId) async {
+    if (messageId.trim().isEmpty) return;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('clinic_inbox')
+          .doc(widget.clinicId)
+          .collection('messages')
+          .doc(messageId)
+          .get();
+      if (!doc.exists) return;
+      final data = doc.data();
+      if (data == null) return;
+      final ownerUid = (data['ownerUid'] as String?)?.trim();
+      if (ownerUid == null || ownerUid.isEmpty) return;
+      final ownerName = (data['ownerName'] as String?)?.trim();
+      final owner = _OwnerOption(
+        uid: ownerUid,
+        label: ownerName != null && ownerName.isNotEmpty ? ownerName : _shortUid(ownerUid),
+      );
+      if (!mounted) return;
+      _handleThreadTap(owner.uid, owner.label);
+      await _openConversation(owner, focusMessageId: messageId);
+    } catch (_) {
+      // ignore focus errors
+    }
   }
 
   @override
@@ -692,10 +723,12 @@ class _ConversationSheet extends StatefulWidget {
   final _OwnerOption owner;
   final String clinicId;
   final String staffUid;
+  final String? focusMessageId;
   const _ConversationSheet({
     required this.owner,
     required this.clinicId,
     required this.staffUid,
+    this.focusMessageId,
   });
 
   @override
@@ -705,8 +738,10 @@ class _ConversationSheet extends StatefulWidget {
 class _ConversationSheetState extends State<_ConversationSheet> {
   final _messageCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
+  final Map<String, GlobalKey> _messageKeys = {};
   bool _sending = false;
   bool _markingRead = false;
+  bool _focusHandled = false;
 
   @override
   void dispose() {
@@ -800,6 +835,26 @@ class _ConversationSheetState extends State<_ConversationSheet> {
     }
   }
 
+  bool _focusTargetMessage(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final targetId = widget.focusMessageId;
+    if (_focusHandled || targetId == null || targetId.isEmpty) return false;
+    final exists = docs.any((d) => d.id == targetId);
+    if (!exists) return false;
+    final key = _messageKeys[targetId];
+    final ctx = key?.currentContext;
+    if (ctx != null) {
+      _focusHandled = true;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+        alignment: 0.2,
+      );
+      return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -847,8 +902,11 @@ class _ConversationSheetState extends State<_ConversationSheet> {
                 }
                 final docs = snap.data?.docs ?? const [];
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _scrollToBottom();
                   _markMessagesRead(docs);
+                  final focused = _focusTargetMessage(docs);
+                  if (!focused) {
+                    _scrollToBottom();
+                  }
                 });
                 if (docs.isEmpty) {
                   return const Center(
@@ -862,7 +920,9 @@ class _ConversationSheetState extends State<_ConversationSheet> {
                       horizontal: 16, vertical: 12),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    final data = docs[index].data();
+                    final doc = docs[index];
+                    final data = doc.data();
+                    final key = _messageKeys.putIfAbsent(doc.id, () => GlobalKey());
                     final fromStaff =
                         (data['fromStaffUid'] as String?)?.isNotEmpty == true;
                     final fromOwner =
@@ -881,6 +941,7 @@ class _ConversationSheetState extends State<_ConversationSheet> {
                         isOwner ? CrossAxisAlignment.start : CrossAxisAlignment.end;
 
                     return Align(
+                      key: key,
                       alignment: alignment,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 6),

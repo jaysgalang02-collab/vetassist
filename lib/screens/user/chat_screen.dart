@@ -15,10 +15,14 @@ class UserChatScreen extends StatefulWidget {
 class _UserChatScreenState extends State<UserChatScreen> {
   final _messageCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
+  final Map<String, GlobalKey> _messageKeys = {};
 
   bool _sending = false;
   bool _loadingProfile = true;
   bool _markingRead = false;
+  bool _routeArgsLoaded = false;
+  String? _focusMessageId;
+  bool _focusHandled = false;
   String? _clinicId;
   String? _ownerName;
   String? _ownerEmail;
@@ -120,6 +124,20 @@ class _UserChatScreenState extends State<UserChatScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_routeArgsLoaded) return;
+    _routeArgsLoaded = true;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map) {
+      final raw = args['focusMessageId'];
+      if (raw is String && raw.trim().isNotEmpty) {
+        _focusMessageId = raw.trim();
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
@@ -158,6 +176,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                           if (docs.isNotEmpty) {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               _markMessagesRead(docs);
+                              _focusTargetMessage(docs);
                             });
                           }
                           if (docs.isEmpty) {
@@ -176,7 +195,10 @@ class _UserChatScreenState extends State<UserChatScreen> {
                             padding: const EdgeInsets.all(16),
                             itemCount: docs.length,
                             itemBuilder: (context, index) {
-                              final data = docs[index].data();
+                              final doc = docs[index];
+                              final data = doc.data();
+                              final key =
+                                  _messageKeys.putIfAbsent(doc.id, () => GlobalKey());
                               final fromStaff = (data['fromStaffUid'] as String?)
                                       ?.isNotEmpty ==
                                   true;
@@ -186,6 +208,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                               final created = data['createdAt'] as Timestamp?;
 
                               return Align(
+                                key: key,
                                 alignment: isOwner
                                     ? Alignment.centerRight
                                     : Alignment.centerLeft,
@@ -287,6 +310,33 @@ class _UserChatScreenState extends State<UserChatScreen> {
       // ignore
     } finally {
       _markingRead = false;
+    }
+  }
+
+  void _focusTargetMessage(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final targetId = _focusMessageId;
+    if (_focusHandled || targetId == null || targetId.isEmpty) return;
+    final exists = docs.any((d) => d.id == targetId);
+    if (!exists) return;
+    final key = _messageKeys[targetId];
+    final ctx = key?.currentContext;
+    if (ctx != null) {
+      _focusHandled = true;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+        alignment: 0.2,
+      );
+      return;
+    }
+    if (_scrollCtrl.hasClients) {
+      _focusHandled = true;
+      _scrollCtrl.animateTo(
+        _scrollCtrl.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
     }
   }
 

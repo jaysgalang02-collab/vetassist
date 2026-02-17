@@ -26,6 +26,7 @@ import 'screens/user/pet_detail_screen.dart';
 import 'screens/user/reminders_screen.dart';
 import 'screens/user/profile_screen.dart';
 import 'screens/user/chat_screen.dart';
+import 'screens/user/book_visit_screen.dart';
 
 // (optional) public clinic registration
 import 'screens/clinic/clinic_form_screen.dart';
@@ -96,6 +97,7 @@ class VetAssistApp extends StatelessWidget {
         RemindersScreen.route: (_) => const RemindersScreen(),
         ProfileScreen.route:   (_) => const ProfileScreen(),
         UserChatScreen.route:  (_) => const UserChatScreen(),
+        BookVisitScreen.route: (_) => const BookVisitScreen(),
 
         // optional public clinic registration
         ClinicFormScreen.route: (_) => const ClinicFormScreen(),

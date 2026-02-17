@@ -11,6 +11,7 @@ import 'tabs/vaccines_reminders_tab.dart';
 import 'tabs/visits_tab.dart';
 import 'tabs/reports_tab.dart';
 import 'tabs/comms_tab.dart';
+import 'package:vetassist/screens/staff/tabs/schedule_tab.dart';
 
 // sign-out helper you already use elsewhere (falls back if Google not used)
 import '../../utils/google_auth.dart';
@@ -28,6 +29,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen>
   String? _myClinicId;
   String _myRole = 'staff';
   String? _myUid;
+  final GlobalKey<CommsTabState> _commsTabKey = GlobalKey<CommsTabState>();
 
   late final TabController _tab;
 
@@ -36,7 +38,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 7, vsync: this);
+    _tab = TabController(length: 8, vsync: this);
     _bootstrap();
   }
 
@@ -84,6 +86,243 @@ class _StaffHomeScreenState extends State<StaffHomeScreen>
     Navigator.of(context).pushNamedAndRemoveUntil('/auth', (_) => false);
   }
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> _bookingNotificationStream() {
+    return FirebaseFirestore.instance
+        .collection('clinic_notifications')
+        .doc(_myClinicId)
+        .collection('items')
+        .where('type', isEqualTo: 'booking_request')
+        .where('read', isEqualTo: false)
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _chatNotificationStream() {
+    return FirebaseFirestore.instance
+        .collection('clinic_inbox')
+        .doc(_myClinicId)
+        .collection('messages')
+        .where('read', isEqualTo: false)
+        .snapshots();
+  }
+
+  Future<void> _markClinicNotificationRead(String docId) async {
+    final clinicId = _myClinicId;
+    if (clinicId == null) return;
+    await FirebaseFirestore.instance
+        .collection('clinic_notifications')
+        .doc(clinicId)
+        .collection('items')
+        .doc(docId)
+        .update({
+      'read': true,
+      'readAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _markClinicChatMessageRead(String docId) async {
+    final clinicId = _myClinicId;
+    if (clinicId == null) return;
+    await FirebaseFirestore.instance
+        .collection('clinic_inbox')
+        .doc(clinicId)
+        .collection('messages')
+        .doc(docId)
+        .update({
+      'read': true,
+      'readAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _markAllClinicNotificationsRead(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) async {
+    if (docs.isEmpty) return;
+    final batch = FirebaseFirestore.instance.batch();
+    for (final d in docs) {
+      batch.update(d.reference, {
+        'read': true,
+        'readAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
+  Future<void> _markAllClinicChatRead(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) async {
+    if (docs.isEmpty) return;
+    final batch = FirebaseFirestore.instance.batch();
+    for (final d in docs) {
+      batch.update(d.reference, {
+        'read': true,
+        'readAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
+  String _tsLabel(Timestamp? ts) {
+    if (ts == null) return '';
+    final dt = ts.toDate();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final d = DateTime(dt.year, dt.month, dt.day);
+    final hh = (dt.hour % 12 == 0 ? 12 : dt.hour % 12).toString();
+    final mm = dt.minute.toString().padLeft(2, '0');
+    final suffix = dt.hour >= 12 ? 'PM' : 'AM';
+    if (d == today) return '$hh:$mm $suffix';
+    return '${dt.month}/${dt.day} $hh:$mm $suffix';
+  }
+
+  Future<void> _openBookingNotifications() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _bookingNotificationStream(),
+              builder: (context, bookingSnap) {
+                return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: _chatNotificationStream(),
+                  builder: (context, chatSnap) {
+                    if (!bookingSnap.hasData || !chatSnap.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final bookingDocs = [...bookingSnap.data!.docs]
+                      ..sort((a, b) {
+                        final ta = (a.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        final tb = (b.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        return tb.compareTo(ta);
+                      });
+                    final chatDocs = chatSnap.data!.docs.where((d) {
+                      final fromOwner = (d.data()['fromOwnerUid'] as String?)?.isNotEmpty == true;
+                      return fromOwner;
+                    }).toList()
+                      ..sort((a, b) {
+                        final ta = (a.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        final tb = (b.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        return tb.compareTo(ta);
+                      });
+
+                    final rows = <Map<String, dynamic>>[
+                      ...bookingDocs.map((d) => {
+                            'kind': 'booking',
+                            'id': d.id,
+                            'title': (d.data()['title'] as String?) ?? 'Booking request',
+                            'body': (d.data()['body'] as String?) ?? '',
+                            'createdAt': d.data()['createdAt'] as Timestamp?,
+                          }),
+                      ...chatDocs.map((d) {
+                        final data = d.data();
+                        final ownerName = (data['ownerName'] as String?)?.trim();
+                        final body = (data['body'] as String?) ?? '';
+                        return {
+                          'kind': 'chat',
+                          'id': d.id,
+                          'title': ownerName?.isNotEmpty == true
+                              ? 'New message from $ownerName'
+                              : 'New customer message',
+                          'body': body,
+                          'createdAt': data['createdAt'] as Timestamp?,
+                        };
+                      }),
+                    ]..sort((a, b) {
+                        final ta = (a['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        final tb = (b['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        return tb.compareTo(ta);
+                      });
+
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Notifications',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: rows.isEmpty
+                                  ? null
+                                  : () async {
+                                      await _markAllClinicNotificationsRead(bookingDocs);
+                                      await _markAllClinicChatRead(chatDocs);
+                                    },
+                              child: const Text('Mark all read'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        if (rows.isEmpty)
+                          const Expanded(
+                            child: Center(
+                              child: Text('No new notifications.'),
+                            ),
+                          )
+                        else
+                          Expanded(
+                            child: ListView.separated(
+                              itemCount: rows.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (_, i) {
+                                final row = rows[i];
+                                final isChat = row['kind'] == 'chat';
+                                return ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: Icon(
+                                    isChat ? Icons.chat_bubble_outline : Icons.event_note_outlined,
+                                  ),
+                                  title: Text(
+                                    row['title'] as String,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    row['body'] as String,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: Text(
+                                    _tsLabel(row['createdAt'] as Timestamp?),
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                  onTap: () async {
+                                    if (isChat) {
+                                      final messageId = row['id'] as String;
+                                      await _markClinicChatMessageRead(messageId);
+                                      _tab.index = 5;
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        _commsTabKey.currentState
+                                            ?.focusMessageFromNotification(messageId);
+                                      });
+                                    } else {
+                                      await _markClinicNotificationRead(row['id'] as String);
+                                      _tab.index = 6;
+                                    }
+                                    if (!context.mounted) return;
+                                    Navigator.pop(ctx);
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _tab.dispose();
@@ -107,6 +346,57 @@ class _StaffHomeScreenState extends State<StaffHomeScreen>
       appBar: AppBar(
         title: const Text('VetAssist — Staff/Vet'),
         actions: [
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _bookingNotificationStream(),
+            builder: (context, bookingSnap) {
+              return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _chatNotificationStream(),
+                builder: (context, chatSnap) {
+                  final bookingCount = bookingSnap.data?.docs.length ?? 0;
+                  final chatCount = chatSnap.data?.docs.where((d) {
+                        final fromOwner =
+                            (d.data()['fromOwnerUid'] as String?)?.isNotEmpty == true;
+                        return fromOwner;
+                      }).length ??
+                      0;
+                  final count = bookingCount + chatCount;
+                  final label = count > 9 ? '9+' : '$count';
+                  return IconButton(
+                    tooltip: 'Notifications',
+                    onPressed: _openBookingNotifications,
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.notifications_none_rounded),
+                        if (count > 0)
+                          Positioned(
+                            right: -5,
+                            top: -5,
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.error,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                label,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
@@ -123,6 +413,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen>
             Tab(icon: Icon(Icons.healing), text: 'Visits / Treatments'),
             Tab(icon: Icon(Icons.bar_chart), text: 'Reports'),
             Tab(icon: Icon(Icons.chat), text: 'Communication'),
+            Tab(icon: Icon(Icons.event_available), text: 'Schedule'),
             Tab(icon: Icon(Icons.key), text: 'Staff Codes'),
           ],
         ),
@@ -135,14 +426,19 @@ class _StaffHomeScreenState extends State<StaffHomeScreen>
           VaccinesRemindersTab(clinicId: _myClinicId!),
           VisitsTab(clinicId: _myClinicId!),
           ReportsTab(clinicId: _myClinicId!),
-          CommsTab(clinicId: _myClinicId!, staffUid: _myUid!),
+          CommsTab(
+            key: _commsTabKey,
+            clinicId: _myClinicId!,
+            staffUid: _myUid!,
+          ),
+          ScheduleTab(clinicId: _myClinicId!, staffUid: _myUid!),
           _StaffCodesTab(clinicId: _myClinicId!, isAdmin: _isAdmin),
         ],
       ),
       floatingActionButton: AnimatedBuilder(
         animation: _tab,
         builder: (_, __) {
-          if (_tab.index != 6) return const SizedBox.shrink();
+            if (_tab.index != 7) return const SizedBox.shrink();
           return FloatingActionButton.extended(
             onPressed: () => _showCodeCreator(
               context,
@@ -225,7 +521,9 @@ class _StaffCodesTab extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: active ? Colors.green.withOpacity(.12) : Colors.red.withOpacity(.12),
+                        color: active
+                            ? Colors.green.withValues(alpha: 0.12)
+                            : Colors.red.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -398,7 +696,7 @@ class _ClinicDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String? _value = initialId;
+    String? selectedValue = initialId;
     final stream = FirebaseFirestore.instance
         .collection('clinics')
         .orderBy('name')
@@ -417,7 +715,7 @@ class _ClinicDropdown extends StatelessWidget {
           label: 'Clinic',
           child: StatefulBuilder(
             builder: (_, setLocal) => DropdownButtonFormField<String>(
-              value: _value,
+              value: selectedValue,
               items: items
                   .map((d) => DropdownMenuItem(
                         value: d.id,
@@ -425,7 +723,7 @@ class _ClinicDropdown extends StatelessWidget {
                       ))
                   .toList(),
               onChanged: (v) {
-                setLocal(() => _value = v);
+                setLocal(() => selectedValue = v);
                 if (v != null) onSelected(v);
               },
               hint: const Text('Select clinic'),

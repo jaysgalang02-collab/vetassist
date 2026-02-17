@@ -13,6 +13,7 @@ import 'pet_detail_screen.dart';
 import 'reminders_screen.dart';
 import 'profile_screen.dart';
 import 'chat_screen.dart';
+import 'book_visit_screen.dart';
 
 class UserDashboard extends StatefulWidget {
   const UserDashboard({super.key});
@@ -22,6 +23,235 @@ class UserDashboard extends StatefulWidget {
 
 class _UserDashboardState extends State<UserDashboard> {
   int _tab = 0; // 0=Home, 1=My Pets, 2=CDSS, 3=Reminders, 4=Profile
+  String get _uid => FirebaseAuth.instance.currentUser!.uid;
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _bookingStatusNotificationStream() {
+    return FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(_uid)
+        .collection('items')
+        .where('type', isEqualTo: 'booking_status')
+        .where('read', isEqualTo: false)
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _chatNotificationStream() {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(_uid)
+        .collection('inbox')
+        .where('read', isEqualTo: false)
+        .snapshots();
+  }
+
+  Future<void> _markBookingNotificationRead(String docId) async {
+    await FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(_uid)
+        .collection('items')
+        .doc(docId)
+        .update({
+      'read': true,
+      'readAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _markChatNotificationRead(String docId) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(_uid)
+        .collection('inbox')
+        .doc(docId)
+        .update({
+      'read': true,
+      'readAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _markAllBookingNotificationsRead(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) async {
+    if (docs.isEmpty) return;
+    final batch = FirebaseFirestore.instance.batch();
+    for (final d in docs) {
+      batch.update(d.reference, {
+        'read': true,
+        'readAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
+  Future<void> _markAllChatNotificationsRead(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) async {
+    if (docs.isEmpty) return;
+    final batch = FirebaseFirestore.instance.batch();
+    for (final d in docs) {
+      batch.update(d.reference, {
+        'read': true,
+        'readAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
+  String _tsLabel(Timestamp? ts) {
+    if (ts == null) return '';
+    final dt = ts.toDate();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final d = DateTime(dt.year, dt.month, dt.day);
+    final hh = (dt.hour % 12 == 0 ? 12 : dt.hour % 12).toString();
+    final mm = dt.minute.toString().padLeft(2, '0');
+    final suffix = dt.hour >= 12 ? 'PM' : 'AM';
+    if (d == today) return '$hh:$mm $suffix';
+    return '${dt.month}/${dt.day} $hh:$mm $suffix';
+  }
+
+  Future<void> _openBookingStatusNotifications() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _bookingStatusNotificationStream(),
+              builder: (context, bookingSnap) {
+                return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: _chatNotificationStream(),
+                  builder: (context, chatSnap) {
+                    if (!bookingSnap.hasData || !chatSnap.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final bookingDocs = [...bookingSnap.data!.docs]
+                      ..sort((a, b) {
+                        final ta = (a.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        final tb = (b.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        return tb.compareTo(ta);
+                      });
+                    final chatDocs = chatSnap.data!.docs.where((d) {
+                      final fromStaff = (d.data()['fromStaffUid'] as String?)?.isNotEmpty == true;
+                      return fromStaff;
+                    }).toList()
+                      ..sort((a, b) {
+                        final ta = (a.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        final tb = (b.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        return tb.compareTo(ta);
+                      });
+
+                    final rows = <Map<String, dynamic>>[
+                      ...bookingDocs.map((d) => {
+                            'kind': 'booking',
+                            'id': d.id,
+                            'title': (d.data()['title'] as String?) ?? 'Booking update',
+                            'body': (d.data()['body'] as String?) ?? '',
+                            'createdAt': d.data()['createdAt'] as Timestamp?,
+                          }),
+                      ...chatDocs.map((d) {
+                        final data = d.data();
+                        final title = (data['title'] as String?)?.trim();
+                        return {
+                          'kind': 'chat',
+                          'id': d.id,
+                          'title': (title != null && title.isNotEmpty)
+                              ? title
+                              : 'New message from clinic',
+                          'body': (data['body'] as String?) ?? '',
+                          'createdAt': data['createdAt'] as Timestamp?,
+                        };
+                      }),
+                    ]..sort((a, b) {
+                        final ta = (a['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        final tb = (b['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                        return tb.compareTo(ta);
+                      });
+
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Notifications',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: rows.isEmpty
+                                  ? null
+                                  : () async {
+                                      await _markAllBookingNotificationsRead(bookingDocs);
+                                      await _markAllChatNotificationsRead(chatDocs);
+                                    },
+                              child: const Text('Mark all read'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        if (rows.isEmpty)
+                          const Expanded(
+                            child: Center(child: Text('No new notifications.')),
+                          )
+                        else
+                          Expanded(
+                            child: ListView.separated(
+                              itemCount: rows.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (_, i) {
+                                final row = rows[i];
+                                final isChat = row['kind'] == 'chat';
+                                return ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: Icon(
+                                    isChat ? Icons.chat_bubble_outline : Icons.notifications_active_outlined,
+                                  ),
+                                  title: Text(
+                                    row['title'] as String,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    row['body'] as String,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: Text(
+                                    _tsLabel(row['createdAt'] as Timestamp?),
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                  onTap: () {
+                                    if (isChat) {
+                                      final messageId = row['id'] as String;
+                                      _markChatNotificationRead(messageId);
+                                      Navigator.pop(ctx);
+                                      Navigator.pushNamed(
+                                        context,
+                                        UserChatScreen.route,
+                                        arguments: {'focusMessageId': messageId},
+                                      );
+                                    } else {
+                                      _markBookingNotificationRead(row['id'] as String);
+                                    }
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,10 +260,56 @@ class _UserDashboardState extends State<UserDashboard> {
       appBar: AppBar(
         title: const Text('VetAssist — Customer'),
         actions: [
-          IconButton(
-            tooltip: 'Notifications',
-            onPressed: () => Navigator.pushNamed(context, RemindersScreen.route),
-            icon: const Icon(Icons.notifications_outlined),
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _bookingStatusNotificationStream(),
+            builder: (context, bookingSnap) {
+              return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _chatNotificationStream(),
+                builder: (context, chatSnap) {
+                  final bookingCount = bookingSnap.data?.docs.length ?? 0;
+                  final chatCount = chatSnap.data?.docs.where((d) {
+                        final fromStaff =
+                            (d.data()['fromStaffUid'] as String?)?.isNotEmpty == true;
+                        return fromStaff;
+                      }).length ??
+                      0;
+                  final count = bookingCount + chatCount;
+                  final label = count > 9 ? '9+' : '$count';
+                  return IconButton(
+                    tooltip: 'Notifications',
+                    onPressed: _openBookingStatusNotifications,
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.notifications_outlined),
+                        if (count > 0)
+                          Positioned(
+                            right: -5,
+                            top: -5,
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.error,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                label,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
           ),
           IconButton(
             tooltip: 'Sign out',
@@ -405,10 +681,10 @@ class _HomeTab extends StatelessWidget {
                   child: Text('Good ${_partOfDay()}, $displayName 👋',
                       style: Theme.of(context).textTheme.titleLarge),
                 ),
-                if (clinicId != null && clinicId!.isNotEmpty)
+                if (clinicId != null && clinicId.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(left: 8.0),
-                    child: _ClinicPill(clinicId: clinicId!),
+                    child: _ClinicPill(clinicId: clinicId),
                   ),
               ],
             ),
@@ -459,7 +735,7 @@ class _HomeTab extends StatelessWidget {
             Row(children: [
               Expanded(child: FilledButton.tonal(onPressed: ()=>Navigator.pushNamed(context, PetFormScreen.route), child: const Row(mainAxisSize: MainAxisSize.min, children:[Icon(Icons.pets), SizedBox(width:6), Text('Add pet')]))),
               const SizedBox(width: 8),
-              Expanded(child: FilledButton.tonal(onPressed: (){ ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Book visit coming soon'))); }, child: const Row(mainAxisSize: MainAxisSize.min, children:[Icon(Icons.add_box_outlined), SizedBox(width:6), Text('Book visit')]))),
+              Expanded(child: FilledButton.tonal(onPressed: (){ Navigator.pushNamed(context, BookVisitScreen.route); }, child: const Row(mainAxisSize: MainAxisSize.min, children:[Icon(Icons.add_box_outlined), SizedBox(width:6), Text('Book visit')]))),
             ]),
 
             const SizedBox(height: 12),
