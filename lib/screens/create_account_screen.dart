@@ -39,6 +39,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   Map<String, String> get _idToName => {for (final c in _clinics) c.id: c.name};
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _clinicSub;
   bool _clinicsBound = false;
+  bool _attemptedAnonymousClinicAuth = false;
+  bool _hasLoadedClinicsAtLeastOnce = false;
 
   @override
   void didChangeDependencies() {
@@ -52,9 +54,21 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   String _norm(String? s) => (s ?? '').trim().toLowerCase();
 
-  void _bindClinics() {
+  Future<void> _ensureClinicReadAuth() async {
+    if (_attemptedAnonymousClinicAuth) return;
+    _attemptedAnonymousClinicAuth = true;
+    if (FirebaseAuth.instance.currentUser != null) return;
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+    } catch (_) {
+      // If anonymous auth is disabled, clinic read may still fail due to rules.
+    }
+  }
+
+  Future<void> _bindClinics() async {
     if (_clinicsBound) return;
     _clinicsBound = true;
+    await _ensureClinicReadAuth();
     bool isActive(dynamic raw) {
       if (raw == null) return true;
       if (raw is bool) return raw;
@@ -63,51 +77,92 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return true;
     }
 
-    _clinicSub = FirebaseFirestore.instance
-        .collection('clinics')
-        .orderBy('name')
-        .snapshots()
-        .listen((snap) {
+    List<_Clinic> normalize(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
       final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> byName = {};
-      for (final d in snap.docs) {
+      final List<QueryDocumentSnapshot<Map<String, dynamic>>> activeDocs = [];
+      for (final d in docs) {
         final data = d.data();
-        if (!isActive(data['active'])) continue;
-        final name = (data['name'] as String?) ?? 'Clinic';
-        final key = _norm(name);
-
-        int tsScore(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-          final dd = doc.data();
-          final up = dd['updatedAt'];
-          final cr = dd['createdAt'];
-          final upMicros = (up is Timestamp) ? up.microsecondsSinceEpoch : 0;
-          final crMicros = (cr is Timestamp) ? cr.microsecondsSinceEpoch : 0;
-          return upMicros > 0 ? upMicros : crMicros;
+        if (isActive(data['active'])) {
+          activeDocs.add(d);
         }
+      }
 
-        if (!byName.containsKey(key)) {
+      // If all clinics are marked inactive in production data, still show them
+      // so account creation is not blocked.
+      final sourceDocs = activeDocs.isNotEmpty ? activeDocs : docs;
+
+      int tsScore(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+        final dd = doc.data();
+        final up = dd['updatedAt'];
+        final cr = dd['createdAt'];
+        final upMicros = (up is Timestamp) ? up.microsecondsSinceEpoch : 0;
+        final crMicros = (cr is Timestamp) ? cr.microsecondsSinceEpoch : 0;
+        return upMicros > 0 ? upMicros : crMicros;
+      }
+
+      for (final d in sourceDocs) {
+        final data = d.data();
+        final rawName = (data['name'] as String?)?.trim();
+        final name = (rawName != null && rawName.isNotEmpty) ? rawName : 'Clinic';
+        final key = _norm(name);
+        if (!byName.containsKey(key) || tsScore(d) >= tsScore(byName[key]!)) {
           byName[key] = d;
-        } else {
-          if (tsScore(d) >= tsScore(byName[key]!)) {
-            byName[key] = d;
-          }
         }
       }
 
       final fresh = byName.values
-          .map((d) => _Clinic(d.id, (d.data()['name'] ?? 'Clinic') as String))
+          .map((d) {
+            final rawName = (d.data()['name'] as String?)?.trim();
+            final name = (rawName != null && rawName.isNotEmpty) ? rawName : d.id;
+            return _Clinic(d.id, name);
+          })
           .toList()
         ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return fresh;
+    }
 
+    _clinicSub = FirebaseFirestore.instance
+        .collection('clinics')
+        .snapshots()
+        .listen((snap) {
+      final fresh = normalize(snap.docs);
       if (!mounted) return;
       setState(() {
         _clinics
           ..clear()
           ..addAll(fresh);
+        _hasLoadedClinicsAtLeastOnce = _clinics.isNotEmpty;
 
         if (_clinicId != null && !_idToName.containsKey(_clinicId)) {
           _clinicId = null;
         }
       });
+    }, onError: (e) async {
+      // Fallback fetch keeps dropdown working even when realtime listener fails.
+      try {
+        final oneShot =
+            await FirebaseFirestore.instance.collection('clinics').get();
+        final fresh = normalize(oneShot.docs);
+        if (!mounted) return;
+        setState(() {
+          _clinics
+            ..clear()
+            ..addAll(fresh);
+          _hasLoadedClinicsAtLeastOnce = _clinics.isNotEmpty;
+          if (_clinicId != null && !_idToName.containsKey(_clinicId)) {
+            _clinicId = null;
+          }
+        });
+      } catch (_) {
+        if (!mounted) return;
+        // Only show hard error if clinics were never loaded.
+        if (!_hasLoadedClinicsAtLeastOnce && _clinics.isEmpty) {
+          toast(
+            context,
+            'Unable to load clinics. Please check Firestore rules for clinics read access.',
+          );
+        }
+      }
     });
   }
 

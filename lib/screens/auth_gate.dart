@@ -26,6 +26,18 @@ class AuthGate extends StatelessWidget {
           // not signed-in: show portal picker (customer vs staff)
           return const PortalPicker();
         }
+        if (user.isAnonymous) {
+          // Anonymous session can be left behind by pre-login flows.
+          // Clear it so app doesn't get stuck waiting for users/{uid} profile.
+          return FutureBuilder<void>(
+            future: FirebaseAuth.instance.signOut(),
+            builder: (context, _) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            },
+          );
+        }
         return _RoleGate(uid: user.uid);
       },
     );
