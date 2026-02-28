@@ -11,6 +11,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
+  static const _logoAsset = 'lib/assets/logo.png';
   late final AnimationController _fade;
 
   @override
@@ -65,10 +66,17 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ],
                   ),
-                  child: Icon(
-                    Icons.pets_rounded,
-                    color: cs.primary,
-                    size: 40,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      _logoAsset,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.pets_rounded,
+                        color: cs.primary,
+                        size: 40,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),

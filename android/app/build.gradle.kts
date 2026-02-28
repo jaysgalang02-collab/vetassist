@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -6,6 +9,26 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+val normalizedKeystoreProps: Map<String, String> = keystoreProperties.entries
+    .associate { entry ->
+        val key = entry.key.toString()
+            .trim()
+            .removePrefix("\uFEFF")
+            .removePrefix("ï»¿")
+        val value = entry.value.toString().trim()
+        key to value
+    }
+
+fun readKeystoreProp(name: String): String? {
+    return normalizedKeystoreProps[name]?.takeIf { it.isNotEmpty() }
 }
 
 android {
@@ -33,11 +56,33 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = requireNotNull(readKeystoreProp("keyAlias")) {
+                    "Missing keyAlias in android/key.properties"
+                }
+                keyPassword = requireNotNull(readKeystoreProp("keyPassword")) {
+                    "Missing keyPassword in android/key.properties"
+                }
+                storeFile = file(requireNotNull(readKeystoreProp("storeFile")) {
+                    "Missing storeFile in android/key.properties"
+                })
+                storePassword = requireNotNull(readKeystoreProp("storePassword")) {
+                    "Missing storePassword in android/key.properties"
+                }
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                // Fallback to debug only if key.properties is missing.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

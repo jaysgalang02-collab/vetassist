@@ -34,6 +34,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const _logoAsset = 'lib/assets/logo.png';
   final emailCtrl = TextEditingController();
   final pwCtrl = TextEditingController();
   bool showPw = false;
@@ -491,6 +492,29 @@ class _LoginScreenState extends State<LoginScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           children: [
+            Center(
+              child: Container(
+                height: 84,
+                width: 84,
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    _logoAsset,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.pets_rounded,
+                      color: cs.primary,
+                      size: 42,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
             Column(
               children: [
                 Text(_heroTitle(),
