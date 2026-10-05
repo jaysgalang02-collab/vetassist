@@ -22,7 +22,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _send() async {
     setState(() => busy = true);
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: emailCtrl.text.trim());
+      await FirebaseAuth.instance
+          .sendPasswordResetEmail(email: emailCtrl.text.trim());
       if (mounted) {
         toast(context, 'Reset email sent');
         Navigator.pop(context);
@@ -52,7 +53,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           FilledButton(
             onPressed: busy ? null : _send,
             child: busy
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
                 : const Text('Send reset link'),
           ),
         ],

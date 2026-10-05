@@ -1,0 +1,32 @@
+{
+  "title": "Urogenital Disease's Clinical Cases Records in Veterinary Patients I",
+  "author": "Ariel Hernandez Camacho",
+  "repository": "Mendeley Data",
+  "version": 1,
+  "doi": "10.17632/6cjnjmtv2h.1",
+  "sourceUrl": "https://data.mendeley.com/datasets/6cjnjmtv2h/1",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "publicationDate": "2026-09-22",
+  "publisherReportedRecordPeriod": "January to June 2025",
+  "publisherReportedSetting": "Small animal clinical practice in the Caribbean",
+  "sourceLanguage": "Primarily Spanish, preserved without machine translation",
+  "rawFile": "UROGENITAL_DATASET-1.csv",
+  "rawSha256": "3584defbb504589e5983fa91fde0eded735019d765efc3b4317ecbf9652711d7",
+  "recordRows": 17,
+  "recordsWithReportedDiagnosis": 16,
+  "speciesCounts": {
+    "canine": 9,
+    "feline": 8
+  },
+  "repeatedSourceIds": {
+    "1": 2,
+    "3": 2,
+    "4": 2
+  },
+  "independentPatientCount": null,
+  "transformation": "CSV to JSON; preserved every source field; added unique row IDs; normalized species spelling only; flagged NONE/blank diagnoses. No synthetic symptoms or disease labels added.",
+  "usage": "Read-only published clinical reference examples. Not used to train the six-disease symptom classifier.",
+  "limitations": "17 rows; repeated patient IDs; one row without a reported diagnosis; urogenital scope differs from the existing model. Independent clinical validation and patient independence were not established.",
+  "attribution": "Hernandez Camacho, Ariel (2026), Urogenital Disease's Clinical Cases Records in Veterinary Patients I, Mendeley Data, V1, doi:10.17632/6cjnjmtv2h.1. CC BY 4.0. Adapted to JSON by VetAssist; no endorsement implied."
+}

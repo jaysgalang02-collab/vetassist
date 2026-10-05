@@ -21,8 +21,8 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
   bool active = true;
   bool busy = false;
 
-  String? clinicId;        // existing clinic id (if owner already has one)
-  String? firstStaffCode;  // remembered/generated code to show after save
+  String? clinicId;
+  String? firstStaffCode;
 
   bool get _isSignedIn => FirebaseAuth.instance.currentUser != null;
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
@@ -34,7 +34,6 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
   }
 
   Future<void> _loadMine() async {
-    // Only attempt owner lookup if signed-in
     if (!_isSignedIn) return;
     try {
       final uid = _uid!;
@@ -48,19 +47,17 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
         final d = q.docs.first;
         clinicId = d.id;
         final data = d.data();
-        nameCtrl.text    = (data['name'] ?? '') as String;
+        nameCtrl.text = (data['name'] ?? '') as String;
         addressCtrl.text = (data['address'] ?? '') as String;
-        phoneCtrl.text   = (data['phone'] ?? '') as String;
-        emailCtrl.text   = (data['email'] ?? '') as String;
-        hoursCtrl.text   = (data['hours'] ?? '') as String;
-        active           = (data['active'] ?? true) as bool;
+        phoneCtrl.text = (data['phone'] ?? '') as String;
+        emailCtrl.text = (data['email'] ?? '') as String;
+        hoursCtrl.text = (data['hours'] ?? '') as String;
+        active = (data['active'] ?? true) as bool;
 
         setState(() {});
         await _loadExistingCode();
       }
-    } catch (_) {
-      // ignore load error silently; user can still attempt to save
-    }
+    } catch (_) {}
   }
 
   Future<void> _loadExistingCode() async {
@@ -76,7 +73,6 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
     }
   }
 
-  // Simple 6-char uppercase code (no confusing chars)
   String _makeCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final rnd = Random.secure();
@@ -84,10 +80,8 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
   }
 
   Future<void> _ensureInitialStaffCode(String cId) async {
-    // Only signed-in owners/staff/admin can write staff_codes (per rules)
     if (!_isSignedIn) return;
 
-    // If a code already exists, keep it.
     final existing = await FirebaseFirestore.instance
         .collection('staff_codes')
         .where('clinicId', isEqualTo: cId)
@@ -99,15 +93,14 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
       return;
     }
 
-    // Create one code as clinic owner (rules allow this if clinics/{cId}.ownerUid == caller)
     final code = _makeCode();
-    final now  = FieldValue.serverTimestamp();
+    final now = FieldValue.serverTimestamp();
 
     await FirebaseFirestore.instance.doc('staff_codes/$code').set({
       'clinicId': cId,
-      'active'  : true,
-      'uses'    : 0,
-      'maxUses' : 50,
+      'active': true,
+      'uses': 0,
+      'maxUses': 50,
       'createdAt': now,
       'updatedAt': now,
     });
@@ -115,7 +108,6 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
     firstStaffCode = code;
   }
 
-  /// If a legacy clinic doc has no ownerUid, a signed-in user can claim once (rules support first-time claim).
   Future<void> _patchOwnerIfMissing(String id) async {
     if (!_isSignedIn) return;
     final uid = _uid!;
@@ -132,7 +124,6 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
   }
 
   Future<void> _save() async {
-    // Basic validation
     final name = nameCtrl.text.trim();
     if (name.isEmpty) {
       _toast('Clinic name is required');
@@ -143,40 +134,34 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
     try {
       final now = FieldValue.serverTimestamp();
 
-      // Build payload. If signed-in, include ownerUid (rules allow it).
       final data = <String, dynamic>{
-        'name'     : name,
-        'address'  : addressCtrl.text.trim(),
-        'phone'    : phoneCtrl.text.trim(),
-        'email'    : emailCtrl.text.trim(),
-        'hours'    : hoursCtrl.text.trim(),
-        'active'   : active,
+        'name': name,
+        'address': addressCtrl.text.trim(),
+        'phone': phoneCtrl.text.trim(),
+        'email': emailCtrl.text.trim(),
+        'hours': hoursCtrl.text.trim(),
+        'active': active,
         'updatedAt': now,
         if (clinicId == null) 'createdAt': now,
-        if (_isSignedIn) 'ownerUid': _uid, // only when signed-in
+        if (_isSignedIn) 'ownerUid': _uid,
       };
 
       final col = FirebaseFirestore.instance.collection('clinics');
 
       if (clinicId == null) {
-        // NEW document (works for both signed-in and public users)
         final doc = await col.add(data);
         clinicId = doc.id;
 
-        // If signed-in, optionally ensure we own it (should already be set above)
         if (_isSignedIn) {
           await _patchOwnerIfMissing(clinicId!);
         }
       } else {
-        // UPDATE existing clinic
-        // If you have legacy docs without ownerUid and you are signed-in, this will claim it.
         if (_isSignedIn) {
           await _patchOwnerIfMissing(clinicId!);
         }
         await col.doc(clinicId).update(data);
       }
 
-      // Provision an initial staff code only when signed-in (rules require auth)
       await _ensureInitialStaffCode(clinicId!);
 
       if (!mounted) return;
@@ -185,10 +170,12 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
         if (firstStaffCode != null) {
           _toast('Invite code: $firstStaffCode');
         } else {
-          _toast('You can generate staff invite codes after claiming ownership.');
+          _toast(
+              'You can generate staff invite codes after claiming ownership.');
         }
       } else {
-        _toast('Tip: Sign in later to claim this clinic and generate staff invite codes.');
+        _toast(
+            'Tip: Sign in later to claim this clinic and generate staff invite codes.');
       }
       Navigator.pop(context);
     } on FirebaseException catch (e) {
@@ -233,21 +220,18 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
             style: TextStyle(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
-
           TextField(
             controller: nameCtrl,
             decoration: deco('Clinic name', hint: 'e.g. Pawfect Vets'),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
-
           TextField(
             controller: addressCtrl,
             decoration: deco('Address', hint: 'Street, Barangay, City'),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
-
           TextField(
             controller: phoneCtrl,
             keyboardType: TextInputType.phone,
@@ -255,7 +239,6 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
-
           TextField(
             controller: emailCtrl,
             keyboardType: TextInputType.emailAddress,
@@ -263,14 +246,12 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
-
           TextField(
             controller: hoursCtrl,
             maxLines: 2,
             decoration: deco('Operating hours', hint: 'e.g. Mon–Sat 8AM–6PM'),
           ),
           const SizedBox(height: 8),
-
           SwitchListTile(
             value: active,
             onChanged: busy ? null : (v) => setState(() => active = v),
@@ -278,7 +259,6 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
             subtitle: const Text('Turn off to temporarily hide your clinic.'),
           ),
           const SizedBox(height: 16),
-
           SizedBox(
             height: 48,
             child: FilledButton.icon(
@@ -288,7 +268,6 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
             ),
           ),
           const SizedBox(height: 10),
-
           if (clinicId != null)
             Text(
               'Clinic ID: $clinicId',

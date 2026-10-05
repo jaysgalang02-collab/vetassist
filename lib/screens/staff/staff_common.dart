@@ -5,32 +5,43 @@ class Section extends StatelessWidget {
   final String title;
   final Widget child;
   final Widget? trailing;
-  const Section({super.key, required this.title, required this.child, this.trailing});
+  const Section(
+      {super.key, required this.title, required this.child, this.trailing});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          color: cs.surfaceContainerHighest.withOpacity(.6),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              const Spacer(),
-              if (trailing != null) trailing!,
-            ],
-          ),
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: cs.outlineVariant),
         ),
-        Expanded(child: child),
-      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                      child: Text(title,
+                          style: Theme.of(context).textTheme.titleMedium)),
+                  const SizedBox(width: 8),
+                  if (trailing != null) trailing!,
+                ],
+              ),
+            ),
+            Expanded(child: child),
+          ],
+        ),
+      ),
     );
   }
 }
 
-// ---- Formatting & CSV helpers ----
 String fmtTs(Timestamp? t) {
   if (t == null) return '';
   final dt = t.toDate();

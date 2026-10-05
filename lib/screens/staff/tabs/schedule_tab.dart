@@ -1,14 +1,20 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import '../../../widgets/brand_widgets.dart';
 
 class ScheduleTab extends StatefulWidget {
   final String clinicId;
   final String staffUid;
+  final String initialSection;
+  final int selectionVersion;
 
   const ScheduleTab({
     super.key,
     required this.clinicId,
     required this.staffUid,
+    this.initialSection = 'pending',
+    this.selectionVersion = 0,
   });
 
   @override
@@ -97,7 +103,8 @@ class _ScheduleTabState extends State<ScheduleTab> {
                       );
                       if (picked == null) return;
                       setLocal(() {
-                        pickedDate = DateTime(picked.year, picked.month, picked.day);
+                        pickedDate =
+                            DateTime(picked.year, picked.month, picked.day);
                       });
                     },
                     icon: const Icon(Icons.calendar_today),
@@ -217,7 +224,10 @@ class _ScheduleTabState extends State<ScheduleTab> {
     String dateKey,
     String timeKey,
   ) async {
-    await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({
+    await FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(bookingId)
+        .update({
       'status': 'rejected',
       'reviewedBy': widget.staffUid,
       'reviewedAt': FieldValue.serverTimestamp(),
@@ -225,7 +235,8 @@ class _ScheduleTabState extends State<ScheduleTab> {
     });
 
     final body = 'Your booking on $dateKey at $timeKey was declined by clinic.';
-    await _notifyOwner(ownerUid: ownerUid, title: 'Booking declined', body: body);
+    await _notifyOwner(
+        ownerUid: ownerUid, title: 'Booking declined', body: body);
     _showSnack('Booking rejected.');
   }
 
@@ -250,7 +261,10 @@ class _ScheduleTabState extends State<ScheduleTab> {
       return;
     }
 
-    await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({
+    await FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(bookingId)
+        .update({
       'status': 'approved',
       'reviewedBy': widget.staffUid,
       'reviewedAt': FieldValue.serverTimestamp(),
@@ -258,7 +272,8 @@ class _ScheduleTabState extends State<ScheduleTab> {
     });
 
     final body = 'Your booking on $dateKey at $timeKey is approved.';
-    await _notifyOwner(ownerUid: ownerUid, title: 'Booking approved', body: body);
+    await _notifyOwner(
+        ownerUid: ownerUid, title: 'Booking approved', body: body);
     _showSnack('Booking approved.');
   }
 
@@ -300,57 +315,70 @@ class _ScheduleTabState extends State<ScheduleTab> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        Row(
+    return ContentFrame(
+        maxWidth: 900,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            Expanded(
-              child: Text(
-                'Schedule Manager',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                Text(
+                  'Appointments',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                FilledButton.icon(
+                  onPressed: _savingSlot ? null : _addSlotDialog,
+                  icon: _savingSlot
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add),
+                  label: const Text('Add slot'),
+                ),
+              ],
             ),
-            FilledButton.icon(
-              onPressed: _savingSlot ? null : _addSlotDialog,
-              icon: _savingSlot
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.add),
-              label: const Text('Add slot'),
+            const SizedBox(height: 12),
+            Text('Set your availability and keep track of every visit.',
+                style: TextStyle(color: cs.onSurfaceVariant)),
+            const SizedBox(height: 24),
+            Text(
+              'Appointment overview',
+              style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary),
             ),
+            const SizedBox(height: 8),
+            _BookingsMonitorPanel(
+              clinicId: widget.clinicId,
+              initialSection: widget.initialSection,
+              selectionVersion: widget.selectionVersion,
+              onApprove: _approveBooking,
+              onReject: _rejectBooking,
+            ),
+            const SizedBox(height: 16),
+            Card(
+                child: ExpansionTile(
+              title: const Text('Clinic availability'),
+              subtitle: const Text('View or manage your available slots'),
+              leading: const Icon(Icons.event_available_outlined),
+              initiallyExpanded: false,
+              children: [
+                _SlotsList(
+                  key: ValueKey('slots-${widget.clinicId}-$_slotsListVersion'),
+                  clinicId: widget.clinicId,
+                  onActiveChanged: _setSlotActive,
+                  onDelete: _deleteSlot,
+                  dateLabel: _dateLabel,
+                  timeLabel: _timeLabel,
+                ),
+              ],
+            )),
           ],
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Available clinic slots',
-          style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary),
-        ),
-        const SizedBox(height: 8),
-        _SlotsList(
-          key: ValueKey('slots-${widget.clinicId}-$_slotsListVersion'),
-          clinicId: widget.clinicId,
-          onActiveChanged: _setSlotActive,
-          onDelete: _deleteSlot,
-          dateLabel: _dateLabel,
-          timeLabel: _timeLabel,
-        ),
-        const SizedBox(height: 14),
-        Text(
-          'Pending booking requests',
-          style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary),
-        ),
-        const SizedBox(height: 8),
-        _BookingsMonitorPanel(
-          clinicId: widget.clinicId,
-          onApprove: _approveBooking,
-          onReject: _rejectBooking,
-        ),
-      ],
-    );
+        ));
   }
 }
 
@@ -489,7 +517,8 @@ class _SlotsListState extends State<_SlotsList> {
         final tk = _timeKey(start);
         final key = '$dk|$tk';
 
-        if (approvedSlotIds.contains(d.id) || approvedDateTimeKeys.contains(key)) {
+        if (approvedSlotIds.contains(d.id) ||
+            approvedDateTimeKeys.contains(key)) {
           continue;
         }
         next.add(d);
@@ -519,7 +548,8 @@ class _SlotsListState extends State<_SlotsList> {
       return const Card(
         child: Padding(
           padding: EdgeInsets.all(12),
-          child: Text('No available slots. Approved schedules are auto-hidden.'),
+          child:
+              Text('No available slots. Approved schedules are auto-hidden.'),
         ),
       );
     }
@@ -535,8 +565,10 @@ class _SlotsListState extends State<_SlotsList> {
 
           return Card(
             child: ListTile(
-              title: Text(date == null ? 'Unknown date' : widget.dateLabel(date)),
-              subtitle: Text('${widget.timeLabel(_parseTime(startTime))} - $endTime'),
+              title:
+                  Text(date == null ? 'Unknown date' : widget.dateLabel(date)),
+              subtitle:
+                  Text('${widget.timeLabel(_parseTime(startTime))} - $endTime'),
               trailing: Wrap(
                 spacing: 4,
                 crossAxisAlignment: WrapCrossAlignment.center,
@@ -582,6 +614,8 @@ class _SlotsListState extends State<_SlotsList> {
 }
 
 class _BookingsMonitorPanel extends StatefulWidget {
+  final String initialSection;
+  final int selectionVersion;
   final String clinicId;
   final Future<void> Function({
     required String bookingId,
@@ -599,6 +633,8 @@ class _BookingsMonitorPanel extends StatefulWidget {
   ) onReject;
 
   const _BookingsMonitorPanel({
+    required this.initialSection,
+    required this.selectionVersion,
     required this.clinicId,
     required this.onApprove,
     required this.onReject,
@@ -609,6 +645,25 @@ class _BookingsMonitorPanel extends StatefulWidget {
 }
 
 class _BookingsMonitorPanelState extends State<_BookingsMonitorPanel> {
+  late String _selectedSection = widget.initialSection;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _bookings = _bookingStream();
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _bookingStream() =>
+      FirebaseFirestore.instance
+          .collection('bookings')
+          .where('clinicId', isEqualTo: widget.clinicId)
+          .snapshots();
+
+  @override
+  void didUpdateWidget(covariant _BookingsMonitorPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.clinicId != widget.clinicId) _bookings = _bookingStream();
+    if (oldWidget.selectionVersion != widget.selectionVersion ||
+        oldWidget.initialSection != widget.initialSection) {
+      _selectedSection = widget.initialSection;
+    }
+  }
+
   static const int _initialPageSize = 5;
   final Map<String, int> _visibleBySection = {
     'pending': _initialPageSize,
@@ -732,7 +787,9 @@ class _BookingsMonitorPanelState extends State<_BookingsMonitorPanel> {
             ],
             if (actionable) ...[
               const SizedBox(height: 8),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   OutlinedButton.icon(
                     onPressed: () => widget.onReject(
@@ -745,7 +802,6 @@ class _BookingsMonitorPanelState extends State<_BookingsMonitorPanel> {
                     icon: const Icon(Icons.close),
                     label: const Text('Reject'),
                   ),
-                  const SizedBox(width: 8),
                   FilledButton.icon(
                     onPressed: () => widget.onApprove(
                       bookingId: d.id,
@@ -768,14 +824,23 @@ class _BookingsMonitorPanelState extends State<_BookingsMonitorPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final stream = FirebaseFirestore.instance
-        .collection('bookings')
-        .where('clinicId', isEqualTo: widget.clinicId)
-        .snapshots();
-
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: stream,
+      stream: _bookings,
       builder: (context, snap) {
+        if (snap.hasError) {
+          return Card(
+              child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(children: [
+                    const Text(
+                        'Appointments could not load. Please check your connection and try again.'),
+                    TextButton.icon(
+                        onPressed: () =>
+                            setState(() => _bookings = _bookingStream()),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry')),
+                  ])));
+        }
         if (!snap.hasData) {
           return const LinearProgressIndicator();
         }
@@ -790,19 +855,34 @@ class _BookingsMonitorPanelState extends State<_BookingsMonitorPanel> {
           );
         }
 
-        final sorted = [...docs]
-          ..sort((a, b) {
-            final ta = (a.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
-            final tb = (b.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+        final sorted = [...docs]..sort((a, b) {
+            final ta =
+                (a.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ??
+                    0;
+            final tb =
+                (b.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ??
+                    0;
             return tb.compareTo(ta);
           });
 
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
 
-        final pending = sorted.where((d) => ((d.data()['status'] as String?) ?? '').toLowerCase() == 'pending').toList();
-        final approved = sorted.where((d) => ((d.data()['status'] as String?) ?? '').toLowerCase() == 'approved').toList();
-        final rejected = sorted.where((d) => ((d.data()['status'] as String?) ?? '').toLowerCase() == 'rejected').toList();
+        final pending = sorted
+            .where((d) =>
+                ((d.data()['status'] as String?) ?? '').toLowerCase() ==
+                'pending')
+            .toList();
+        final approved = sorted
+            .where((d) =>
+                ((d.data()['status'] as String?) ?? '').toLowerCase() ==
+                'approved')
+            .toList();
+        final rejected = sorted
+            .where((d) =>
+                ((d.data()['status'] as String?) ?? '').toLowerCase() ==
+                'rejected')
+            .toList();
 
         final todayApproved = approved.where((d) {
           final dateKey = (d.data()['dateKey'] as String?) ?? '';
@@ -842,7 +922,8 @@ class _BookingsMonitorPanelState extends State<_BookingsMonitorPanel> {
                   ),
                 )
               else
-                ...shown.map((d) => _bookingTile(context, d, actionable: actionable)),
+                ...shown.map(
+                    (d) => _bookingTile(context, d, actionable: actionable)),
               if (items.length > shown.length)
                 Align(
                   alignment: Alignment.centerRight,
@@ -864,11 +945,39 @@ class _BookingsMonitorPanelState extends State<_BookingsMonitorPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            section(id: 'pending', items: pending, actionable: true),
-            section(id: 'today', items: todayApproved),
-            section(id: 'upcoming', items: upcomingApproved),
-            section(id: 'approved', items: approved),
-            section(id: 'rejected', items: rejected),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                for (final entry in {
+                  'pending': 'Pending (${pending.length})',
+                  'today': 'Today (${todayApproved.length})',
+                  'upcoming': 'Upcoming (${upcomingApproved.length})',
+                  'approved': 'Approved (${approved.length})',
+                  'rejected': 'Declined (${rejected.length})',
+                }.entries)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(entry.value),
+                      selected: _selectedSection == entry.key,
+                      onSelected: (_) =>
+                          setState(() => _selectedSection = entry.key),
+                    ),
+                  ),
+              ]),
+            ),
+            const SizedBox(height: 16),
+            section(
+              id: _selectedSection,
+              items: {
+                'pending': pending,
+                'today': todayApproved,
+                'upcoming': upcomingApproved,
+                'approved': approved,
+                'rejected': rejected,
+              }[_selectedSection]!,
+              actionable: _selectedSection == 'pending',
+            ),
           ],
         );
       },

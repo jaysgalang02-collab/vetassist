@@ -35,7 +35,8 @@ class _ReportsTabState extends State<ReportsTab> {
     final vaccines = await FirebaseFirestore.instance
         .collection('vaccines')
         .where('clinicId', isEqualTo: clinicId)
-        .where('dateGiven', isGreaterThanOrEqualTo: Timestamp.fromDate(_range.start))
+        .where('dateGiven',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(_range.start))
         .where('dateGiven', isLessThanOrEqualTo: Timestamp.fromDate(_range.end))
         .get();
 
@@ -122,7 +123,8 @@ class _ReportsTabState extends State<ReportsTab> {
             spacing: 12,
             runSpacing: 12,
             children: [
-              _MetricCard(label: 'Patients (total)', value: m['patients_total']!),
+              _MetricCard(
+                  label: 'Patients (total)', value: m['patients_total']!),
               _MetricCard(label: 'Canine', value: m['patients_canine']!),
               _MetricCard(label: 'Feline', value: m['patients_feline']!),
               _MetricCard(label: 'Visits', value: m['visits']!),

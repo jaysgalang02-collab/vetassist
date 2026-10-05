@@ -1,0 +1,498 @@
+[
+  {
+    "caseId": "DEMO-canine-parvovirus-1",
+    "patientId": "SYNTHETIC-DEMO-canine-parvovirus-1",
+    "species": "canine",
+    "disease": "parvovirus",
+    "symptoms": [
+      "diarrhea",
+      "fever",
+      "lethargy",
+      "loss_of_appetite",
+      "vomiting"
+    ],
+    "symptomText": "diarrhea, fever, lethargy, loss of appetite, vomiting",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-parvovirus-2",
+    "patientId": "SYNTHETIC-DEMO-canine-parvovirus-2",
+    "species": "canine",
+    "disease": "parvovirus",
+    "symptoms": [
+      "fever",
+      "lethargy",
+      "loss_of_appetite",
+      "vomiting"
+    ],
+    "symptomText": "fever, lethargy, loss of appetite, vomiting",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-parvovirus-3",
+    "patientId": "SYNTHETIC-DEMO-canine-parvovirus-3",
+    "species": "canine",
+    "disease": "parvovirus",
+    "symptoms": [
+      "diarrhea",
+      "lethargy",
+      "loss_of_appetite",
+      "vomiting"
+    ],
+    "symptomText": "diarrhea, lethargy, loss of appetite, vomiting",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-parvovirus-4",
+    "patientId": "SYNTHETIC-DEMO-canine-parvovirus-4",
+    "species": "canine",
+    "disease": "parvovirus",
+    "symptoms": [
+      "diarrhea",
+      "fever",
+      "loss_of_appetite",
+      "vomiting"
+    ],
+    "symptomText": "diarrhea, fever, loss of appetite, vomiting",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-parvovirus-5",
+    "patientId": "SYNTHETIC-DEMO-canine-parvovirus-5",
+    "species": "canine",
+    "disease": "parvovirus",
+    "symptoms": [
+      "diarrhea",
+      "fever",
+      "lethargy",
+      "vomiting"
+    ],
+    "symptomText": "diarrhea, fever, lethargy, vomiting",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-distemper-1",
+    "patientId": "SYNTHETIC-DEMO-canine-distemper-1",
+    "species": "canine",
+    "disease": "distemper",
+    "symptoms": [
+      "cough",
+      "fever",
+      "nasal_discharge",
+      "neurologic_signs",
+      "ocular_discharge"
+    ],
+    "symptomText": "cough, fever, nasal discharge, neurologic signs, ocular discharge",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-distemper-2",
+    "patientId": "SYNTHETIC-DEMO-canine-distemper-2",
+    "species": "canine",
+    "disease": "distemper",
+    "symptoms": [
+      "fever",
+      "nasal_discharge",
+      "neurologic_signs",
+      "ocular_discharge"
+    ],
+    "symptomText": "fever, nasal discharge, neurologic signs, ocular discharge",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-distemper-3",
+    "patientId": "SYNTHETIC-DEMO-canine-distemper-3",
+    "species": "canine",
+    "disease": "distemper",
+    "symptoms": [
+      "cough",
+      "nasal_discharge",
+      "neurologic_signs",
+      "ocular_discharge"
+    ],
+    "symptomText": "cough, nasal discharge, neurologic signs, ocular discharge",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-distemper-4",
+    "patientId": "SYNTHETIC-DEMO-canine-distemper-4",
+    "species": "canine",
+    "disease": "distemper",
+    "symptoms": [
+      "cough",
+      "fever",
+      "neurologic_signs",
+      "ocular_discharge"
+    ],
+    "symptomText": "cough, fever, neurologic signs, ocular discharge",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-distemper-5",
+    "patientId": "SYNTHETIC-DEMO-canine-distemper-5",
+    "species": "canine",
+    "disease": "distemper",
+    "symptoms": [
+      "cough",
+      "fever",
+      "nasal_discharge",
+      "ocular_discharge"
+    ],
+    "symptomText": "cough, fever, nasal discharge, ocular discharge",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-heartworm-1",
+    "patientId": "SYNTHETIC-DEMO-canine-heartworm-1",
+    "species": "canine",
+    "disease": "heartworm",
+    "symptoms": [
+      "cough",
+      "lethargy",
+      "respiratory_distress",
+      "weight_loss"
+    ],
+    "symptomText": "cough, lethargy, respiratory distress, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-heartworm-2",
+    "patientId": "SYNTHETIC-DEMO-canine-heartworm-2",
+    "species": "canine",
+    "disease": "heartworm",
+    "symptoms": [
+      "lethargy",
+      "respiratory_distress",
+      "weight_loss"
+    ],
+    "symptomText": "lethargy, respiratory distress, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-heartworm-3",
+    "patientId": "SYNTHETIC-DEMO-canine-heartworm-3",
+    "species": "canine",
+    "disease": "heartworm",
+    "symptoms": [
+      "cough",
+      "respiratory_distress",
+      "weight_loss"
+    ],
+    "symptomText": "cough, respiratory distress, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-heartworm-4",
+    "patientId": "SYNTHETIC-DEMO-canine-heartworm-4",
+    "species": "canine",
+    "disease": "heartworm",
+    "symptoms": [
+      "cough",
+      "lethargy",
+      "weight_loss"
+    ],
+    "symptomText": "cough, lethargy, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-canine-heartworm-5",
+    "patientId": "SYNTHETIC-DEMO-canine-heartworm-5",
+    "species": "canine",
+    "disease": "heartworm",
+    "symptoms": [
+      "cough",
+      "lethargy",
+      "respiratory_distress"
+    ],
+    "symptomText": "cough, lethargy, respiratory distress",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-feline_leukemia-1",
+    "patientId": "SYNTHETIC-DEMO-feline-feline_leukemia-1",
+    "species": "feline",
+    "disease": "feline_leukemia",
+    "symptoms": [
+      "fever",
+      "lethargy",
+      "pale_gums",
+      "weight_loss"
+    ],
+    "symptomText": "fever, lethargy, pale gums, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-feline_leukemia-2",
+    "patientId": "SYNTHETIC-DEMO-feline-feline_leukemia-2",
+    "species": "feline",
+    "disease": "feline_leukemia",
+    "symptoms": [
+      "lethargy",
+      "pale_gums",
+      "weight_loss"
+    ],
+    "symptomText": "lethargy, pale gums, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-feline_leukemia-3",
+    "patientId": "SYNTHETIC-DEMO-feline-feline_leukemia-3",
+    "species": "feline",
+    "disease": "feline_leukemia",
+    "symptoms": [
+      "fever",
+      "pale_gums",
+      "weight_loss"
+    ],
+    "symptomText": "fever, pale gums, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-feline_leukemia-4",
+    "patientId": "SYNTHETIC-DEMO-feline-feline_leukemia-4",
+    "species": "feline",
+    "disease": "feline_leukemia",
+    "symptoms": [
+      "fever",
+      "lethargy",
+      "weight_loss"
+    ],
+    "symptomText": "fever, lethargy, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-feline_leukemia-5",
+    "patientId": "SYNTHETIC-DEMO-feline-feline_leukemia-5",
+    "species": "feline",
+    "disease": "feline_leukemia",
+    "symptoms": [
+      "fever",
+      "lethargy",
+      "pale_gums"
+    ],
+    "symptomText": "fever, lethargy, pale gums",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-fiv-1",
+    "patientId": "SYNTHETIC-DEMO-feline-fiv-1",
+    "species": "feline",
+    "disease": "fiv",
+    "symptoms": [
+      "fever",
+      "lethargy",
+      "weight_loss"
+    ],
+    "symptomText": "fever, lethargy, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-fiv-2",
+    "patientId": "SYNTHETIC-DEMO-feline-fiv-2",
+    "species": "feline",
+    "disease": "fiv",
+    "symptoms": [
+      "lethargy",
+      "weight_loss"
+    ],
+    "symptomText": "lethargy, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-fiv-3",
+    "patientId": "SYNTHETIC-DEMO-feline-fiv-3",
+    "species": "feline",
+    "disease": "fiv",
+    "symptoms": [
+      "fever",
+      "weight_loss"
+    ],
+    "symptomText": "fever, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-fiv-4",
+    "patientId": "SYNTHETIC-DEMO-feline-fiv-4",
+    "species": "feline",
+    "disease": "fiv",
+    "symptoms": [
+      "fever",
+      "lethargy"
+    ],
+    "symptomText": "fever, lethargy",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-fiv-5",
+    "patientId": "SYNTHETIC-DEMO-feline-fiv-5",
+    "species": "feline",
+    "disease": "fiv",
+    "symptoms": [
+      "lethargy",
+      "weight_loss"
+    ],
+    "symptomText": "lethargy, weight loss",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-feline_uri-1",
+    "patientId": "SYNTHETIC-DEMO-feline-feline_uri-1",
+    "species": "feline",
+    "disease": "feline_uri",
+    "symptoms": [
+      "cough",
+      "fever",
+      "loss_of_appetite",
+      "nasal_discharge",
+      "ocular_discharge"
+    ],
+    "symptomText": "cough, fever, loss of appetite, nasal discharge, ocular discharge",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-feline_uri-2",
+    "patientId": "SYNTHETIC-DEMO-feline-feline_uri-2",
+    "species": "feline",
+    "disease": "feline_uri",
+    "symptoms": [
+      "fever",
+      "loss_of_appetite",
+      "nasal_discharge",
+      "ocular_discharge"
+    ],
+    "symptomText": "fever, loss of appetite, nasal discharge, ocular discharge",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-feline_uri-3",
+    "patientId": "SYNTHETIC-DEMO-feline-feline_uri-3",
+    "species": "feline",
+    "disease": "feline_uri",
+    "symptoms": [
+      "cough",
+      "loss_of_appetite",
+      "nasal_discharge",
+      "ocular_discharge"
+    ],
+    "symptomText": "cough, loss of appetite, nasal discharge, ocular discharge",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-feline_uri-4",
+    "patientId": "SYNTHETIC-DEMO-feline-feline_uri-4",
+    "species": "feline",
+    "disease": "feline_uri",
+    "symptoms": [
+      "cough",
+      "fever",
+      "nasal_discharge",
+      "ocular_discharge"
+    ],
+    "symptomText": "cough, fever, nasal discharge, ocular discharge",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  },
+  {
+    "caseId": "DEMO-feline-feline_uri-5",
+    "patientId": "SYNTHETIC-DEMO-feline-feline_uri-5",
+    "species": "feline",
+    "disease": "feline_uri",
+    "symptoms": [
+      "cough",
+      "fever",
+      "loss_of_appetite",
+      "ocular_discharge"
+    ],
+    "symptomText": "cough, fever, loss of appetite, ocular discharge",
+    "dataKind": "synthetic_demo",
+    "diagnosisConfirmed": false,
+    "labelOrigin": "Generated subsets of existing application rules",
+    "notAnObservedPatient": true
+  }
+]

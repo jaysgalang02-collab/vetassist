@@ -5,6 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../utils/google_auth.dart';
+import '../../utils/account_access.dart';
+import 'admin_workspace.dart';
+import 'admin_clinic_editor.dart';
+import 'evaluation_settings_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   static const route = '/admin';
@@ -14,9 +18,11 @@ class AdminHomeScreen extends StatefulWidget {
   State<AdminHomeScreen> createState() => _AdminHomeScreenState();
 }
 
-class _AdminHomeScreenState extends State<AdminHomeScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tab;
+class _AdminHomeScreenState extends State<AdminHomeScreen> {
+  int _index = 0;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _usersStream;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _petsStream;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _clinicsStream;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _clinicWatcher;
   Map<String, String> _clinicNames = const {};
 
@@ -28,8 +34,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 4, vsync: this)..addListener(() => setState(() {}));
-    _clinicWatcher = FirebaseFirestore.instance.collection('clinics').snapshots().listen(
+    _usersStream = FirebaseFirestore.instance.collection('users').snapshots();
+    _petsStream = FirebaseFirestore.instance.collection('patients').snapshots();
+    _clinicsStream =
+        FirebaseFirestore.instance.collection('clinics').snapshots();
+    _clinicWatcher = _clinicsStream.listen(
       (snap) {
         if (!mounted) return;
         final next = <String, String>{};
@@ -39,13 +48,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
         }
         setState(() => _clinicNames = next);
       },
+      onError: (Object error) {},
     );
   }
 
   @override
   void dispose() {
     _clinicWatcher?.cancel();
-    _tab.dispose();
+
     _customerSearch.dispose();
     _petSearch.dispose();
     _staffSearch.dispose();
@@ -60,7 +70,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
         title: const Text('Sign out?'),
         content: const Text('You will be returned to the portal picker.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Sign out'),
@@ -80,27 +92,31 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
 
   Future<void> _assignClinicDialog(String uid, {String? current}) async {
     final messenger = ScaffoldMessenger.of(context);
-    String? selection = current;
+    String? selection = _clinicNames.containsKey(current) ? current : null;
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Assign clinic'),
         content: DropdownButtonFormField<String?>(
+          isExpanded: true,
           value: selection,
           items: [
-            const DropdownMenuItem<String?>(value: null, child: Text('Unassigned')),
-            ..._clinicNames.entries
-                .map((e) => DropdownMenuItem<String?>(value: e.key, child: Text(e.value))),
+            const DropdownMenuItem<String?>(
+                value: null, child: Text('Unassigned')),
+            ..._clinicNames.entries.map((e) =>
+                DropdownMenuItem<String?>(value: e.key, child: Text(e.value))),
           ],
           onChanged: (v) => selection = v,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               await _updateUserClinic(uid, selection);
-              messenger.showSnackBar(const SnackBar(content: Text('Clinic saved.')));
+              messenger
+                  .showSnackBar(const SnackBar(content: Text('Clinic saved.')));
             },
             child: const Text('Save'),
           ),
@@ -138,217 +154,181 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
     });
   }
 
-  Future<void> _openClinicEditor({DocumentSnapshot<Map<String, dynamic>>? clinic}) async {
+  Future<void> _openClinicEditor(
+      {DocumentSnapshot<Map<String, dynamic>>? clinic}) async {
     final messenger = ScaffoldMessenger.of(context);
-    final data = clinic?.data();
-    final nameCtrl = TextEditingController(text: (data?['name'] as String?) ?? '');
-    final addressCtrl = TextEditingController(text: (data?['address'] as String?) ?? '');
-    final phoneCtrl = TextEditingController(text: (data?['phone'] as String?) ?? '');
-    final emailCtrl = TextEditingController(text: (data?['email'] as String?) ?? '');
-    final hoursCtrl = TextEditingController(text: (data?['hours'] as String?) ?? '');
-    bool active = (data?['active'] as bool?) ?? true;
-    bool busy = false;
-
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          left: 20,
-          right: 20,
-          top: 24,
-        ),
-        child: StatefulBuilder(
-          builder: (ctx, setLocal) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                clinic == null ? 'Register clinic' : 'Edit clinic',
-                style: Theme.of(ctx).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Clinic name'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: addressCtrl,
-                decoration: const InputDecoration(labelText: 'Address'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: phoneCtrl,
-                decoration: const InputDecoration(labelText: 'Phone'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: emailCtrl,
-                decoration: const InputDecoration(labelText: 'Email'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: hoursCtrl,
-                decoration: const InputDecoration(labelText: 'Operating hours'),
-              ),
-              SwitchListTile.adaptive(
-                value: active,
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Clinic is active'),
-                onChanged: (v) => setLocal(() => active = v),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: busy
-                      ? null
-                      : () async {
-                          if (nameCtrl.text.trim().isEmpty) {
-                            messenger.showSnackBar(
-                              const SnackBar(content: Text('Clinic name is required.')),
-                            );
-                            return;
-                          }
-                          setLocal(() => busy = true);
-                          final ref = FirebaseFirestore.instance.collection('clinics');
-                          final id = clinic?.id ?? ref.doc().id;
-                          final payload = <String, dynamic>{
-                            'name': nameCtrl.text.trim(),
-                            'address': addressCtrl.text.trim(),
-                            'phone': phoneCtrl.text.trim(),
-                            'email': emailCtrl.text.trim(),
-                            'hours': hoursCtrl.text.trim(),
-                            'active': active,
-                            'updatedAt': FieldValue.serverTimestamp(),
-                          };
-                          if (clinic == null) {
-                            payload['createdAt'] = FieldValue.serverTimestamp();
-                          }
-                          await ref.doc(id).set(payload, SetOptions(merge: true));
-                          if (!mounted) return;
-                          Navigator.pop(ctx);
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(clinic == null ? 'Clinic created.' : 'Clinic updated.'),
-                            ),
-                          );
-                        },
-                  icon: busy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(clinic == null ? 'Create clinic' : 'Save changes'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      useSafeArea: true,
+      builder: (context) => FractionallySizedBox(
+          heightFactor: 0.92,
+          child: AdminClinicEditor(
+              initial: clinic?.data(),
+              onSave: (data) async {
+                final ref = FirebaseFirestore.instance.collection('clinics');
+                await ref.doc(clinic?.id ?? ref.doc().id).set({
+                  ...data,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                  if (clinic == null) 'createdAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+                messenger.showSnackBar(SnackBar(
+                    content: Text(clinic == null
+                        ? 'Clinic created.'
+                        : 'Clinic updated.')));
+              })),
     );
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Administrator Console'),
-        actions: [
-          IconButton(icon: const Icon(Icons.logout), tooltip: 'Sign out', onPressed: _signOut),
-        ],
-        bottom: TabBar(
-          controller: _tab,
-          isScrollable: true,
-          tabs: const [
-            Tab(icon: Icon(Icons.people_alt_outlined), text: 'Customers'),
-            Tab(icon: Icon(Icons.pets_outlined), text: 'Pets'),
-            Tab(icon: Icon(Icons.badge_outlined), text: 'Staff & Vets'),
-            Tab(icon: Icon(Icons.local_hospital_outlined), text: 'Clinics'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tab,
-        children: [
+  Widget build(BuildContext context) => AdminWorkspace(
+        index: _index,
+        onSelect: (index) {
+          FocusManager.instance.primaryFocus?.unfocus();
+          setState(() => _index = index);
+        },
+        onSignOut: _signOut,
+        onSettings: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => const EvaluationSettingsScreen())),
+        onCreateClinic: () => _openClinicEditor(),
+        pages: [
+          _buildOverview(),
           _buildCustomersTab(),
           _buildPetsTab(),
           _buildStaffTab(),
-          _buildClinicsTab(),
+          _buildClinicsTab()
         ],
-      ),
-      floatingActionButton: _tab.index == 3
-          ? FloatingActionButton.extended(
-              onPressed: () => _openClinicEditor(),
-              icon: const Icon(Icons.add_business),
-              label: const Text('Register clinic'),
-            )
-          : null,
-    );
-  }
+      );
 
-  Widget _buildCustomersTab() {
-    final query = FirebaseFirestore.instance
-        .collection('users')
-        .where('role', isEqualTo: 'customer');
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: TextField(
-            controller: _customerSearch,
-            decoration: InputDecoration(
-              hintText: 'Search customers',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _customerSearch.text.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () => setState(() => _customerSearch.clear()),
-                    ),
-            ),
-            onChanged: (_) => setState(() {}),
+  Widget _buildOverview() => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: _usersStream,
+        builder: (context, users) =>
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: _petsStream,
+          builder: (context, pets) =>
+              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _clinicsStream,
+            builder: (context, clinics) {
+              final accounts = users.data?.docs;
+              final network = clinics.data?.docs;
+              final user = FirebaseAuth.instance.currentUser;
+              final display = user?.displayName?.trim();
+              return AdminOverview(
+                totals: [
+                  users.hasError
+                      ? null
+                      : accounts
+                          ?.where((d) => accountRole(d.data()) == 'customer')
+                          .length,
+                  pets.hasError ? null : pets.data?.docs.length,
+                  users.hasError
+                      ? null
+                      : accounts?.where((d) => hasStaffAccess(d.data())).length,
+                  clinics.hasError ? null : network?.length,
+                ],
+                clinics: clinics.hasError
+                    ? []
+                    : (network
+                            ?.map((d) =>
+                                (d.data()['name'] as String?) ??
+                                'Unnamed clinic')
+                            .toList() ??
+                        [])
+                  ..sort(),
+                activeClinics: clinics.hasError
+                    ? null
+                    : network?.where((d) => d.data()['active'] == true).length,
+                name: display?.isNotEmpty == true
+                    ? display!.split(' ').first
+                    : 'Admin',
+                hasError: users.hasError || pets.hasError || clinics.hasError,
+                onSelect: (index) => setState(() => _index = index),
+                onCreateClinic: () => _openClinicEditor(),
+              );
+            },
           ),
         ),
+      );
+
+  Widget _directorySearch(TextEditingController controller, String title,
+          String subtitle, String hint) =>
+      Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (MediaQuery.viewInsetsOf(context).bottom == 0) ...[
+              Text(title, style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 6),
+              Text(subtitle,
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 20),
+            ],
+            TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                    hintText: hint,
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: controller.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear search',
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () =>
+                                setState(() => controller.clear()))),
+                onChanged: (_) => setState(() {})),
+          ]));
+  Widget _buildCustomersTab() {
+    return Column(
+      children: [
+        _directorySearch(_customerSearch, 'Customers',
+            'People connected to your care network.', 'Search name or email'),
         Expanded(
           child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: query.snapshots(),
+            stream: _usersStream,
             builder: (ctx, snap) {
               if (snap.hasError) {
-                return Center(
-                  child: Text('Failed to load customers: ${snap.error}'),
-                );
+                return const AdminState(
+                    title: 'Unable to load records',
+                    message: 'Check your connection and account permissions.',
+                    error: true);
               }
               if (!snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
               final q = _customerSearch.text.trim().toLowerCase();
               final docs = snap.data!.docs.where((doc) {
+                if (accountRole(doc.data()) != 'customer') return false;
                 if (q.isEmpty) return true;
                 final data = doc.data();
-                final name = ((data['displayName'] as String?) ?? '').toLowerCase();
+                final name =
+                    ((data['displayName'] as String?) ?? '').toLowerCase();
                 final email = ((data['email'] as String?) ?? '').toLowerCase();
                 return name.contains(q) || email.contains(q);
               }).toList()
                 ..sort((a, b) {
                   final dataA = a.data();
                   final dataB = b.data();
-                  final labelA = ((dataA['displayName'] as String?) ?? (dataA['email'] as String?) ?? a.id)
+                  final labelA = ((dataA['displayName'] as String?) ??
+                          (dataA['email'] as String?) ??
+                          a.id)
                       .toLowerCase();
-                  final labelB = ((dataB['displayName'] as String?) ?? (dataB['email'] as String?) ?? b.id)
+                  final labelB = ((dataB['displayName'] as String?) ??
+                          (dataB['email'] as String?) ??
+                          b.id)
                       .toLowerCase();
                   return labelA.compareTo(labelB);
                 });
               if (docs.isEmpty) {
-                return const Center(child: Text('No customers matched.'));
+                return const AdminState(
+                    title: 'No customers found',
+                    message:
+                        'Try another name or email. Registered customers will appear here.');
               }
               return ListView.separated(
                 itemCount: docs.length,
-                separatorBuilder: (_, __) => const Divider(height: 0),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (ctx, i) {
                   final doc = docs[i];
                   final data = doc.data();
@@ -358,26 +338,27 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
                   final clinicName = clinicId == null
                       ? 'Unassigned'
                       : _clinicNames[clinicId] ?? clinicId;
-                  final displayLabel = (label?.isNotEmpty == true ? label! : email);
-                  return ListTile(
-                    leading: CircleAvatar(child: Text(displayLabel[0].toUpperCase())),
-                    title: Text(displayLabel),
-                    subtitle: Text('Clinic: $clinicName'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          tooltip: 'Assign clinic',
-                          onPressed: () => _assignClinicDialog(doc.id, current: clinicId),
-                        ),
-                        IconButton(
+                  final displayLabel =
+                      (label?.isNotEmpty == true ? label! : email);
+                  return AdminRecordCard(
+                    title: displayLabel,
+                    subtitle: '$email\nClinic: $clinicName',
+                    icon: Icons.person_outline_rounded,
+                    badge: AdminBadge(
+                        label: clinicId == null ? 'Unassigned' : 'Connected',
+                        muted: clinicId == null),
+                    actions: Row(mainAxisSize: MainAxisSize.min, children: [
+                      TextButton.icon(
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Assign clinic'),
+                          onPressed: () =>
+                              _assignClinicDialog(doc.id, current: clinicId)),
+                      IconButton(
                           icon: const Icon(Icons.delete_outline),
                           tooltip: 'Delete customer',
-                          onPressed: () => _confirmDeleteUser(doc.id, label: displayLabel),
-                        ),
-                      ],
-                    ),
+                          onPressed: () =>
+                              _confirmDeleteUser(doc.id, label: displayLabel)),
+                    ]),
                   );
                 },
               );
@@ -389,31 +370,20 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
   }
 
   Widget _buildPetsTab() {
-    final query = FirebaseFirestore.instance.collection('patients').orderBy('name');
-
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: TextField(
-            controller: _petSearch,
-            decoration: InputDecoration(
-              hintText: 'Search pets',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _petSearch.text.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () => setState(() => _petSearch.clear()),
-                    ),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-        ),
+        _directorySearch(_petSearch, 'Pet directory',
+            'Patient records across every clinic.', 'Search pet name or breed'),
         Expanded(
           child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: query.snapshots(),
+            stream: _petsStream,
             builder: (ctx, snap) {
+              if (snap.hasError) {
+                return const AdminState(
+                    title: 'Unable to load records',
+                    message: 'Check your connection and account permissions.',
+                    error: true);
+              }
               if (!snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
@@ -426,11 +396,15 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
                 return name.contains(q) || breed.contains(q);
               }).toList();
               if (docs.isEmpty) {
-                return const Center(child: Text('No pets found.'));
+                return const AdminState(
+                    title: 'No pets found',
+                    message:
+                        'Try another search. Clinic patient records will appear here.');
               }
               return ListView.separated(
                 itemCount: docs.length,
-                separatorBuilder: (_, __) => const Divider(height: 0),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (ctx, i) {
                   final doc = docs[i];
                   final data = doc.data();
@@ -438,15 +412,15 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
                   final clinicName = clinicId == null
                       ? 'No clinic'
                       : _clinicNames[clinicId] ?? clinicId;
-                  return ListTile(
-                    title: Text((data['name'] as String?) ?? 'Unnamed pet'),
-                    subtitle: Text(
-                      '${(data['species'] as String?) ?? 'Unknown species'} · Clinic: $clinicName',
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () => _confirmDeletePet(doc.id),
-                    ),
+                  return AdminRecordCard(
+                    title: (data['name'] as String?) ?? 'Unnamed pet',
+                    subtitle:
+                        '${data['species'] ?? 'Unknown species'} · ${data['breed'] ?? 'Breed not recorded'}\nClinic: $clinicName',
+                    icon: Icons.pets_outlined,
+                    actions: IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: 'Delete pet record',
+                        onPressed: () => _confirmDeletePet(doc.id)),
                   );
                 },
               );
@@ -464,10 +438,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
         title: const Text('Delete pet record?'),
         content: const Text('This action cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error),
             child: const Text('Delete'),
           ),
         ],
@@ -476,7 +453,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
     if (ok != true) return;
     await FirebaseFirestore.instance.collection('patients').doc(id).delete();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pet deleted.')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Pet deleted.')));
   }
 
   Future<void> _confirmDeleteUser(String uid, {required String label}) async {
@@ -486,7 +464,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
         title: const Text('Delete account?'),
         content: Text('Remove "$label" permanently?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(ctx).colorScheme.error),
@@ -504,53 +484,48 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
   }
 
   Widget _buildStaffTab() {
-    final query = FirebaseFirestore.instance
-        .collection('users')
-        .where('role', whereIn: ['staff', 'vet', 'admin'])
-        .orderBy('displayName');
-
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: TextField(
-            controller: _staffSearch,
-            decoration: InputDecoration(
-              hintText: 'Search staff / vets',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _staffSearch.text.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () => setState(() => _staffSearch.clear()),
-                    ),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-        ),
+        _directorySearch(
+            _staffSearch,
+            'Your team',
+            'Manage roles, access, and clinic assignments.',
+            'Search name or email'),
         Expanded(
           child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: query.snapshots(),
+            stream: _usersStream,
             builder: (ctx, snap) {
+              if (snap.hasError) {
+                return const AdminState(
+                    title: 'Unable to load records',
+                    message: 'Check your connection and account permissions.',
+                    error: true);
+              }
               if (!snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
               final q = _staffSearch.text.trim().toLowerCase();
               final docs = snap.data!.docs.where((doc) {
+                if (!hasStaffAccess(doc.data())) return false;
                 if (q.isEmpty) return true;
                 final data = doc.data();
-                final name = ((data['displayName'] as String?) ?? '').toLowerCase();
+                final name =
+                    ((data['displayName'] as String?) ?? '').toLowerCase();
                 final email = ((data['email'] as String?) ?? '').toLowerCase();
                 return name.contains(q) || email.contains(q);
               }).toList();
 
               if (docs.isEmpty) {
-                return const Center(child: Text('No staff accounts.'));
+                return const AdminState(
+                    title: 'No team members found',
+                    message:
+                        'Try another name or email. Staff and veterinarians will appear here.');
               }
 
               return ListView.separated(
                 itemCount: docs.length,
-                separatorBuilder: (_, __) => const Divider(height: 0),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (ctx, i) {
                   final doc = docs[i];
                   final data = doc.data();
@@ -562,57 +537,58 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
                       ? 'No clinic'
                       : _clinicNames[clinicId] ?? clinicId;
                   final isAdmin = data['adminusertype'] == true;
-                  final displayLabel = label?.isNotEmpty == true ? label! : email;
-                  return ListTile(
-                    title: Text(displayLabel),
-                    subtitle: Text('Role: ${role.toUpperCase()} · Clinic: $clinicName'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Switch.adaptive(
-                          value: isAdmin,
-                          onChanged: (v) {
-                            _toggleAdmin(doc.id, v).then((_) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      v ? 'Admin access granted.' : 'Admin access removed.'),
-                                ),
-                              );
-                            });
-                          },
-                        ),
-                        PopupMenuButton<String>(
-                          onSelected: (value) {
-                            if (value == 'assign') {
-                              _assignClinicDialog(doc.id, current: clinicId);
-                            } else {
-                              _changeRole(doc.id, value).then((_) {
+                  final displayLabel =
+                      label?.isNotEmpty == true ? label! : email;
+                  return AdminRecordCard(
+                    title: displayLabel,
+                    subtitle: '$email\nClinic: $clinicName',
+                    icon: Icons.badge_outlined,
+                    badge: AdminBadge(label: role.toUpperCase()),
+                    actions: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          const Text('Admin flag',
+                              style: TextStyle(fontSize: 12)),
+                          Switch.adaptive(
+                              value: isAdmin,
+                              onChanged: (v) async {
+                                await _toggleAdmin(doc.id, v);
                                 if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content:
-                                          Text('Role updated to ${value.toUpperCase()}')),
-                                );
-                              });
-                            }
-                          },
-                          itemBuilder: (ctx) => const [
-                            PopupMenuItem(value: 'assign', child: Text('Assign clinic')),
-                            PopupMenuItem(value: 'staff', child: Text('Set role: Staff')),
-                            PopupMenuItem(value: 'vet', child: Text('Set role: Vet')),
-                            PopupMenuItem(value: 'admin', child: Text('Set role: Admin')),
-                          ],
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          tooltip: 'Delete account',
-                          onPressed: () =>
-                              _confirmDeleteUser(doc.id, label: displayLabel),
-                        ),
-                      ],
-                    ),
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                    content: Text(v
+                                        ? 'Admin flag enabled.'
+                                        : 'Admin flag disabled. Role-based access still applies.')));
+                              }),
+                          PopupMenuButton<String>(
+                              tooltip: 'Manage team member',
+                              onSelected: (value) {
+                                if (value == 'assign') {
+                                  _assignClinicDialog(doc.id,
+                                      current: clinicId);
+                                } else {
+                                  _changeRole(doc.id, value);
+                                }
+                              },
+                              itemBuilder: (ctx) => const [
+                                    PopupMenuItem(
+                                        value: 'assign',
+                                        child: Text('Assign clinic')),
+                                    PopupMenuItem(
+                                        value: 'staff',
+                                        child: Text('Set role: Staff')),
+                                    PopupMenuItem(
+                                        value: 'vet',
+                                        child: Text('Set role: Vet')),
+                                    PopupMenuItem(
+                                        value: 'admin',
+                                        child: Text('Set role: Admin')),
+                                  ]),
+                          IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              tooltip: 'Delete account',
+                              onPressed: () => _confirmDeleteUser(doc.id,
+                                  label: displayLabel)),
+                        ]),
                   );
                 },
               );
@@ -624,31 +600,23 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
   }
 
   Widget _buildClinicsTab() {
-    final query = FirebaseFirestore.instance.collection('clinics').orderBy('name');
-
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: TextField(
-            controller: _clinicSearch,
-            decoration: InputDecoration(
-              hintText: 'Search clinics',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _clinicSearch.text.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () => setState(() => _clinicSearch.clear()),
-                    ),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-        ),
+        _directorySearch(
+            _clinicSearch,
+            'Clinic network',
+            'Keep your clinics connected and up to date.',
+            'Search name or address'),
         Expanded(
           child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: query.snapshots(),
+            stream: _clinicsStream,
             builder: (ctx, snap) {
+              if (snap.hasError) {
+                return const AdminState(
+                    title: 'Unable to load records',
+                    message: 'Check your connection and account permissions.',
+                    error: true);
+              }
               if (!snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
@@ -657,63 +625,63 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
                 if (q.isEmpty) return true;
                 final data = doc.data();
                 final name = ((data['name'] as String?) ?? '').toLowerCase();
-                final address = ((data['address'] as String?) ?? '').toLowerCase();
+                final address =
+                    ((data['address'] as String?) ?? '').toLowerCase();
                 return name.contains(q) || address.contains(q);
               }).toList();
 
               if (docs.isEmpty) {
-                return const Center(child: Text('No clinics registered.'));
+                return const AdminState(
+                    title: 'No clinics found',
+                    message: 'Try another search or register a new clinic.');
               }
 
               return ListView.separated(
                 itemCount: docs.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
                 itemBuilder: (ctx, i) {
                   final doc = docs[i];
                   final data = doc.data();
                   final active = data['active'] == true;
-                  return Card(
-                    child: ListTile(
-                      title: Text((data['name'] as String?) ?? 'Clinic'),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if ((data['address'] as String?)?.isNotEmpty == true)
-                            Text(data['address'] as String),
-                          if ((data['phone'] as String?)?.isNotEmpty == true)
-                            Text('Phone: ${data['phone']}'),
-                          if ((data['email'] as String?)?.isNotEmpty == true)
-                            Text('Email: ${data['email']}'),
-                        ],
-                      ),
-                      trailing: PopupMenuButton<String>(
+                  return AdminRecordCard(
+                    title: (data['name'] as String?) ?? 'Clinic',
+                    subtitle: [
+                      if ((data['address'] as String?)?.isNotEmpty == true)
+                        data['address'] as String,
+                      if ((data['phone'] as String?)?.isNotEmpty == true)
+                        'Phone: ${data['phone']}',
+                      if ((data['email'] as String?)?.isNotEmpty == true)
+                        data['email'] as String,
+                      if ((data['hours'] as String?)?.isNotEmpty == true)
+                        'Hours: ${data['hours']}',
+                    ].join('\n'),
+                    icon: Icons.local_hospital_outlined,
+                    badge: AdminBadge(
+                        label: active ? 'Active' : 'Inactive', muted: !active),
+                    actions: PopupMenuButton<String>(
+                        tooltip: 'Manage clinic',
                         onSelected: (value) {
                           if (value == 'edit') {
                             _openClinicEditor(clinic: doc);
                           } else if (value == 'toggle') {
                             _toggleClinicActive(doc.id, !active);
-                          } else if (value == 'delete') {
+                          } else {
                             _confirmDeleteClinic(doc.id,
                                 name: (data['name'] as String?) ?? doc.id);
                           }
                         },
                         itemBuilder: (ctx) => [
-                          const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                          PopupMenuItem(
-                            value: 'toggle',
-                            child: Text(active ? 'Mark inactive' : 'Activate'),
-                          ),
-                          const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                        ],
-                      ),
-                      leading: Icon(
-                        active ? Icons.verified : Icons.pause_circle_outline,
-                        color: active
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.outline,
-                      ),
-                    ),
+                              const PopupMenuItem(
+                                  value: 'edit', child: Text('Edit clinic')),
+                              PopupMenuItem(
+                                  value: 'toggle',
+                                  child: Text(
+                                      active ? 'Mark inactive' : 'Activate')),
+                              const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('Delete clinic')),
+                            ]),
                   );
                 },
               );
@@ -738,7 +706,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
         title: const Text('Delete clinic?'),
         content: Text('Clinic "$name" and its record will be removed.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(ctx).colorScheme.error),
@@ -755,5 +725,3 @@ class _AdminHomeScreenState extends State<AdminHomeScreen>
         .showSnackBar(const SnackBar(content: Text('Clinic deleted.')));
   }
 }
-
-

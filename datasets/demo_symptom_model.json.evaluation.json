@@ -1,0 +1,30 @@
+{
+  "datasetKind": "synthetic_demo",
+  "interpretation": "Software demonstration only. Examples derive from existing rules; accuracy does not measure clinical performance.",
+  "sourceSha256": "377ff7edd1265776059010fd6716c0a729f0574c0383d5322030712adf48a2ab",
+  "trainingCases": 24,
+  "heldoutCases": 6,
+  "correct": 5,
+  "holdoutAccuracy": 0.8333333333333334,
+  "confusionMatrix": {
+    "canine:distemper": {
+      "distemper": 1
+    },
+    "canine:heartworm": {
+      "heartworm": 1
+    },
+    "canine:parvovirus": {
+      "parvovirus": 1
+    },
+    "feline:feline_leukemia": {
+      "feline_leukemia": 1
+    },
+    "feline:feline_uri": {
+      "feline_uri": 1
+    },
+    "feline:fiv": {
+      "feline_leukemia": 1
+    }
+  },
+  "clinicalValidation": "Not performed. Holdout results are dataset-specific and not clinical validation."
+}

@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-// Local date formatter (yyyy-mm-dd)
 String _fmt(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
@@ -11,7 +10,6 @@ class PetVaccinesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Firestore index (one-time): vaccines: patientId ASC, dateGiven DESC
     final q = FirebaseFirestore.instance
         .collection('vaccines')
         .where('patientId', isEqualTo: patientId)
@@ -24,7 +22,8 @@ class PetVaccinesTab extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (snap.hasError) {
-          return _FriendlyError(title: 'Couldn’t load vaccines', error: snap.error);
+          return _FriendlyError(
+              title: 'Couldn’t load vaccines', error: snap.error);
         }
         if (!snap.hasData || snap.data!.docs.isEmpty) {
           return const _EmptyState('No vaccination records.');
@@ -40,7 +39,6 @@ class PetVaccinesTab extends StatelessWidget {
 
             final name = (d['name'] ?? 'Vaccine').toString();
 
-            // Accept both 'dateGiven' or 'date'
             final givenTs = (d['dateGiven'] ?? d['date']) as Timestamp?;
             final date = givenTs?.toDate();
 
@@ -71,8 +69,6 @@ class PetVaccinesTab extends StatelessWidget {
   }
 }
 
-/* ---------- lightweight local fallbacks ---------- */
-
 class _EmptyState extends StatelessWidget {
   final String message;
   const _EmptyState(this.message);
@@ -84,7 +80,8 @@ class _EmptyState extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Text(
           message,
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          style:
+              TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ),
     );

@@ -1,6 +1,5 @@
-// lib/screens/staff_home_screen.dart
 import 'package:flutter/material.dart';
-import 'clinic/clinic_form_screen.dart'; // <— add this import
+import 'clinic/clinic_form_screen.dart';
 
 class StaffHomeScreen extends StatelessWidget {
   static const route = '/home-staff';
@@ -19,8 +18,6 @@ class StaffHomeScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.pushNamed(context, ClinicFormScreen.route),
           ),
-
-          // …your other staff tiles
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/toast.dart';
+import '../widgets/brand_widgets.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   static const route = '/create';
@@ -13,7 +14,6 @@ class CreateAccountScreen extends StatefulWidget {
   State<CreateAccountScreen> createState() => _CreateAccountScreenState();
 }
 
-/* Simple clinic model (id + name) */
 class _Clinic {
   final String id;
   final String name;
@@ -21,21 +21,19 @@ class _Clinic {
 }
 
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  // 'customer' | 'staff'
   String portal = 'customer';
 
-  final nameCtrl       = TextEditingController();
-  final emailCtrl      = TextEditingController();
-  final pwCtrl         = TextEditingController();
-  final pw2Ctrl        = TextEditingController();
-  final clinicCodeCtrl = TextEditingController(); // required for staff
+  final nameCtrl = TextEditingController();
+  final emailCtrl = TextEditingController();
+  final pwCtrl = TextEditingController();
+  final pw2Ctrl = TextEditingController();
+  final clinicCodeCtrl = TextEditingController();
 
   bool showPw = false;
-  bool busy   = false;
+  bool busy = false;
 
-  // Clinics dropdown (customers only)
   final List<_Clinic> _clinics = <_Clinic>[];
-  String? _clinicId; // currently selected clinicId (customers)
+  String? _clinicId;
   Map<String, String> get _idToName => {for (final c in _clinics) c.id: c.name};
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _clinicSub;
   bool _clinicsBound = false;
@@ -60,9 +58,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     if (FirebaseAuth.instance.currentUser != null) return;
     try {
       await FirebaseAuth.instance.signInAnonymously();
-    } catch (_) {
-      // If anonymous auth is disabled, clinic read may still fail due to rules.
-    }
+    } catch (_) {}
   }
 
   Future<void> _bindClinics() async {
@@ -77,8 +73,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return true;
     }
 
-    List<_Clinic> normalize(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
-      final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> byName = {};
+    List<_Clinic> normalize(
+        List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+      final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> byName =
+          {};
       final List<QueryDocumentSnapshot<Map<String, dynamic>>> activeDocs = [];
       for (final d in docs) {
         final data = d.data();
@@ -87,8 +85,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         }
       }
 
-      // If all clinics are marked inactive in production data, still show them
-      // so account creation is not blocked.
       final sourceDocs = activeDocs.isNotEmpty ? activeDocs : docs;
 
       int tsScore(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
@@ -103,20 +99,19 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       for (final d in sourceDocs) {
         final data = d.data();
         final rawName = (data['name'] as String?)?.trim();
-        final name = (rawName != null && rawName.isNotEmpty) ? rawName : 'Clinic';
+        final name =
+            (rawName != null && rawName.isNotEmpty) ? rawName : 'Clinic';
         final key = _norm(name);
         if (!byName.containsKey(key) || tsScore(d) >= tsScore(byName[key]!)) {
           byName[key] = d;
         }
       }
 
-      final fresh = byName.values
-          .map((d) {
-            final rawName = (d.data()['name'] as String?)?.trim();
-            final name = (rawName != null && rawName.isNotEmpty) ? rawName : d.id;
-            return _Clinic(d.id, name);
-          })
-          .toList()
+      final fresh = byName.values.map((d) {
+        final rawName = (d.data()['name'] as String?)?.trim();
+        final name = (rawName != null && rawName.isNotEmpty) ? rawName : d.id;
+        return _Clinic(d.id, name);
+      }).toList()
         ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       return fresh;
     }
@@ -138,7 +133,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         }
       });
     }, onError: (e) async {
-      // Fallback fetch keeps dropdown working even when realtime listener fails.
       try {
         final oneShot =
             await FirebaseFirestore.instance.collection('clinics').get();
@@ -155,7 +149,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         });
       } catch (_) {
         if (!mounted) return;
-        // Only show hard error if clinics were never loaded.
+
         if (!_hasLoadedClinicsAtLeastOnce && _clinics.isEmpty) {
           toast(
             context,
@@ -183,7 +177,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     super.dispose();
   }
 
-  /// Resolve clinicId strictly from a staff/invite **code**.
   Future<String?> _clinicIdFromStaffCode(String code) async {
     final codeDoc =
         await FirebaseFirestore.instance.doc('staff_codes/$code').get();
@@ -195,25 +188,31 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   Future<void> _create() async {
-    final name    = nameCtrl.text.trim();
-    final email   = emailCtrl.text.trim();
-    final pw1     = pwCtrl.text;
-    final pw2     = pw2Ctrl.text;
+    final name = nameCtrl.text.trim();
+    final email = emailCtrl.text.trim();
+    final pw1 = pwCtrl.text;
+    final pw2 = pw2Ctrl.text;
     final isStaff = portal == 'staff';
-    final code    = clinicCodeCtrl.text.trim();
+    final code = clinicCodeCtrl.text.trim();
 
-    // ---- Guards ------------------------------------------------------------
-    if (email.isEmpty)  { toast(context, 'Please enter your email'); return; }
-    if (pw1.length < 6) { toast(context, 'Password must be at least 6 characters'); return; }
-    if (pw1 != pw2)     { toast(context, 'Passwords do not match'); return; }
+    if (email.isEmpty) {
+      toast(context, 'Please enter your email');
+      return;
+    }
+    if (pw1.length < 6) {
+      toast(context, 'Password must be at least 6 characters');
+      return;
+    }
+    if (pw1 != pw2) {
+      toast(context, 'Passwords do not match');
+      return;
+    }
 
-    // Customer MUST pick a clinic
     if (!isStaff && _clinicId == null) {
       toast(context, 'Please select your vet clinic');
       return;
     }
 
-    // Staff MUST enter a valid code (no clinic dropdown for staff)
     if (isStaff && code.isEmpty) {
       toast(context, 'Staff/Invite code is required');
       return;
@@ -222,7 +221,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     setState(() => busy = true);
     UserCredential? cred;
     try {
-      // Prevent duplicate accounts for the same email
       final methods =
           await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
       if (methods.isNotEmpty) {
@@ -236,10 +234,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         return;
       }
 
-      // Resolve clinic
       String? finalClinicId = !isStaff ? _clinicId : null;
 
-      // Create Firebase Auth user (needed so Firestore rules allow staff code validation)
       cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: pw1,
@@ -261,7 +257,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         finalClinicId = clinicFromCode;
       }
 
-      // Save Firestore profile
       final uid = cred.user!.uid;
       final now = FieldValue.serverTimestamp();
       final users = FirebaseFirestore.instance.collection('users');
@@ -274,7 +269,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         'provider': 'password',
         'createdAt': now,
         'updatedAt': now,
-        'clinicId': finalClinicId, // never null here
+        'clinicId': finalClinicId,
         if (isStaff) 'clinicCodeUsed': code,
       });
 
@@ -298,12 +293,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     } on FirebaseException catch (e) {
       toast(context, 'Failed to save your profile: ${e.message}');
       if (cred?.user != null) {
-        try { await cred!.user!.delete(); } catch (_) {}
+        try {
+          await cred!.user!.delete();
+        } catch (_) {}
       }
     } catch (_) {
       toast(context, 'Something went wrong. Please try again.');
       if (cred?.user != null) {
-        try { await cred!.user!.delete(); } catch (_) {}
+        try {
+          await cred!.user!.delete();
+        } catch (_) {}
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -317,9 +316,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isStaff
-            ? 'Create Staff/Admin Account'
-            : 'Create Customer Account'),
+        title: Text(
+            isStaff ? 'Create Staff/Admin Account' : 'Create Customer Account'),
         actions: [
           IconButton(
             tooltip: 'Reload clinics',
@@ -328,135 +326,149 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           ),
         ],
       ),
-      body: ListView(
-        key: ValueKey('create-$portal'), // keep list state per tab
-        padding: const EdgeInsets.all(20),
-        children: [
-          // Portal switcher
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'customer', label: Text('Customer')),
-              ButtonSegment(value: 'staff',    label: Text('Staff/Admin')),
-            ],
-            selected: {portal},
-            onSelectionChanged: (selection) {
-              setState(() => portal = selection.first);
-            },
-          ),
-          const SizedBox(height: 14),
-
-          _LabeledField(
-            label: 'Full name (optional)',
-            child: TextField(
-              controller: nameCtrl,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(hintText: 'e.g., Juan Dela Cruz'),
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          _LabeledField(
-            label: 'Email',
-            child: TextField(
-              controller: emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(hintText: 'you@example.com'),
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // CUSTOMER-ONLY: clinic dropdown
-          if (!isStaff) ...[
-            _LabeledField(
-              label: 'Your Vet Clinic (required)',
-              child: DropdownButtonFormField<String>(
-                key: const ValueKey('clinic-dd-customer'),
-                value: _clinicId,
-                items: _clinics
-                    .map((c) => DropdownMenuItem<String>(
-                          value: c.id,
-                          child: Text(c.name),
-                        ))
-                    .toList(),
-                onChanged: (v) => setState(() => _clinicId = v),
-                decoration: InputDecoration(
-                  hintText: _clinics.isEmpty
-                      ? 'No clinics available yet'
-                      : 'Select clinic',
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-
-          // STAFF-ONLY: invite code (required)
-          if (isStaff) ...[
-            _LabeledField(
-              label: 'Staff / Invite Code (required)',
-              child: TextField(
-                key: const ValueKey('staff-code'),
-                controller: clinicCodeCtrl,
-                textInputAction: TextInputAction.next,
-                decoration:
-                    const InputDecoration(hintText: 'Enter staff/invite code'),
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-
-          _LabeledField(
-            label: 'Password',
-            child: TextField(
-              controller: pwCtrl,
-              obscureText: !showPw,
-              decoration: InputDecoration(
-                hintText: 'At least 6 characters',
-                suffixIcon: IconButton(
-                  onPressed: () => setState(() => showPw = !showPw),
-                  icon: Icon(showPw ? Icons.visibility_off : Icons.visibility),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          _LabeledField(
-            label: 'Confirm password',
-            child: TextField(
-              controller: pw2Ctrl,
-              obscureText: !showPw,
-              decoration: InputDecoration(
-                hintText: 'Repeat password',
-                suffixIcon: IconButton(
-                  onPressed: () => setState(() => showPw = !showPw),
-                  icon: Icon(showPw ? Icons.visibility_off : Icons.visibility),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          FilledButton(
-            onPressed: busy ? null : _create,
-            child: busy
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                : const Text('Create account'),
-          ),
-          const SizedBox(height: 10),
-
-          Text(
-            isStaff
-                ? 'Staff/Admin: Enter your staff/invite code. The code determines your clinic.'
-                : 'Note: Choosing the correct clinic lets your vet see your records.',
-            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
-          ),
-        ],
-      ),
+      body: SafeArea(
+          child: ContentFrame(
+              maxWidth: 560,
+              child: ListView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                key: ValueKey('create-$portal'),
+                padding: const EdgeInsets.all(20),
+                children: [
+                  Text(
+                      isStaff
+                          ? 'Join your clinic team.'
+                          : 'Better care starts here.',
+                      style: Theme.of(context).textTheme.headlineMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                      isStaff
+                          ? 'Use your clinic invite code to get connected.'
+                          : 'Create your account, choose your clinic, then add your pet.',
+                      style: TextStyle(color: cs.onSurfaceVariant)),
+                  const SizedBox(height: 24),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'customer', label: Text('Customer')),
+                      ButtonSegment(value: 'staff', label: Text('Staff/Admin')),
+                    ],
+                    selected: {portal},
+                    onSelectionChanged: (selection) {
+                      setState(() => portal = selection.first);
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _LabeledField(
+                    label: 'Full name (optional)',
+                    child: TextField(
+                      controller: nameCtrl,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                          hintText: 'e.g., Juan Dela Cruz'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _LabeledField(
+                    label: 'Email',
+                    child: TextField(
+                      controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      decoration:
+                          const InputDecoration(hintText: 'you@example.com'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (!isStaff) ...[
+                    _LabeledField(
+                      label: 'Your Vet Clinic (required)',
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        key: const ValueKey('clinic-dd-customer'),
+                        value: _clinicId,
+                        items: _clinics
+                            .map((c) => DropdownMenuItem<String>(
+                                  value: c.id,
+                                  child: Text(c.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ))
+                            .toList(),
+                        onChanged: (v) => setState(() => _clinicId = v),
+                        decoration: InputDecoration(
+                          hintText: _clinics.isEmpty
+                              ? 'No clinics available yet'
+                              : 'Select clinic',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (isStaff) ...[
+                    _LabeledField(
+                      label: 'Staff / Invite Code (required)',
+                      child: TextField(
+                        key: const ValueKey('staff-code'),
+                        controller: clinicCodeCtrl,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                            hintText: 'Enter staff/invite code'),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  _LabeledField(
+                    label: 'Password',
+                    child: TextField(
+                      controller: pwCtrl,
+                      obscureText: !showPw,
+                      decoration: InputDecoration(
+                        hintText: 'At least 6 characters',
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(() => showPw = !showPw),
+                          icon: Icon(
+                              showPw ? Icons.visibility_off : Icons.visibility),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _LabeledField(
+                    label: 'Confirm password',
+                    child: TextField(
+                      controller: pw2Ctrl,
+                      obscureText: !showPw,
+                      decoration: InputDecoration(
+                        hintText: 'Repeat password',
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(() => showPw = !showPw),
+                          icon: Icon(
+                              showPw ? Icons.visibility_off : Icons.visibility),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  FilledButton(
+                    onPressed: busy ? null : _create,
+                    child: busy
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text('Create account'),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    isStaff
+                        ? 'Staff/Admin: Enter your staff/invite code. The code determines your clinic.'
+                        : 'Note: Choosing the correct clinic lets your vet see your records.',
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                  ),
+                ],
+              ))),
     );
   }
 }

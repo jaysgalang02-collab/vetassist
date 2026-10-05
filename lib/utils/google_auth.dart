@@ -1,32 +1,26 @@
+import 'account_access.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Your Web OAuth Client ID (…apps.googleusercontent.com)
-const String kWebClientId = '1066739816321-nu6qmv825q1bnj25e8smprebsqp9ql02.apps.googleusercontent.com';
+const String kWebClientId =
+    '1066739816321-nu6qmv825q1bnj25e8smprebsqp9ql02.apps.googleusercontent.com';
 
 final GoogleSignIn _googleSignIn = GoogleSignIn(
-  serverClientId: kWebClientId, // critical so idToken is returned on Android
+  serverClientId: kWebClientId,
   scopes: <String>['email'],
 );
 
-/// Sign in with Google and enforce portal rules.
-/// - requiredRole: 'customer', 'staff', or 'admin'
-/// - createIfMissing: true -> create a profile if none exists (used for customer)
-/// - clinicCode: optional, only relevant if you later allow staff self-onboarding via code
 Future<UserCredential?> signInWithGoogleEnforcingRole({
   required String requiredRole,
   required bool createIfMissing,
   String? clinicCode,
 }) async {
-  // 1) Ask user to pick a Google account
   final GoogleSignInAccount? gUser = await _googleSignIn.signIn();
-  if (gUser == null) return null; // user cancelled
+  if (gUser == null) return null;
 
-  // 2) Tokens
   final gAuth = await gUser.authentication;
 
-  // 3) Firebase sign-in
   final credential = GoogleAuthProvider.credential(
     idToken: gAuth.idToken,
     accessToken: gAuth.accessToken,
@@ -35,31 +29,34 @@ Future<UserCredential?> signInWithGoogleEnforcingRole({
   final user = userCred.user!;
   final uid = user.uid;
 
-  // 4) Check profile
   final users = FirebaseFirestore.instance.collection('users');
-  final doc = await users.doc(uid).get();
+  final doc = await users.doc(uid).get(const GetOptions(source: Source.server));
 
   final now = FieldValue.serverTimestamp();
 
   if (!doc.exists) {
-    // No profile yet
     if (requiredRole == 'staff' && !createIfMissing) {
-      // Staff portal forbids creating a new profile unless you implement invite code flow
       await _forceSignOut();
       throw FirebaseAuthException(
         code: 'not-staff',
-        message: 'This Google account is not registered as staff. Please contact the clinic admin.',
+        message:
+            'This Google account is not registered as staff. Please contact the clinic admin.',
       );
     }
     if (requiredRole == 'admin') {
+      final details = adminAccessDetails(
+        projectId: FirebaseFirestore.instance.app.options.projectId,
+        uid: uid,
+        email: user.email,
+        profile: null,
+      );
       await _forceSignOut();
       throw FirebaseAuthException(
         code: 'not-admin',
-        message: 'This Google account is not authorized as an administrator.',
+        message: details,
       );
     }
 
-    // Customer portal: create a customer profile
     await users.doc(uid).set({
       'email': user.email,
       'displayName': user.displayName,
@@ -70,44 +67,39 @@ Future<UserCredential?> signInWithGoogleEnforcingRole({
       'createdAt': now,
       'updatedAt': now,
     });
-
-    // If staff self-onboarding with code is something you add later,
-    // you can swap 'customer' for 'staff' above after validating the code.
   } else {
-    // Profile exists: enforce role-based portals
-    bool _adminFlag(dynamic value) {
-      if (value is bool) return value;
-      if (value is String) return value.toLowerCase() == 'true';
-      if (value is num) return value != 0;
-      return false;
-    }
-
     final data = doc.data() as Map<String, dynamic>;
-    final role = (data['role'] as String?)?.toLowerCase();
-    final bool isAdminRole = role == 'admin';
-    final bool isAdminUser = isAdminRole || _adminFlag(data['adminusertype']);
-    final bool isStaffish = isAdminUser || role == 'staff' || role == 'vet';
-
+    final bool isAdminUser = hasAdminAccess(data);
+    final bool isStaffish = hasStaffAccess(data);
     if (requiredRole == 'admin' && !isAdminUser) {
+      final details = adminAccessDetails(
+        projectId: FirebaseFirestore.instance.app.options.projectId,
+        uid: uid,
+        email: user.email,
+        profile: data,
+      );
       await _forceSignOut();
       throw FirebaseAuthException(
         code: 'not-admin',
-        message: 'This Google account is not authorized as an administrator.',
+        message: details,
       );
     }
     if (requiredRole == 'staff' && !isStaffish) {
       await _forceSignOut();
       throw FirebaseAuthException(
         code: 'not-staff',
-        message: 'This Google account is not registered as staff. Please use Customer login or contact admin.',
+        message:
+            'This Google account is not registered as staff. Please use Customer login or contact admin.',
       );
     }
 
-    // Update basic fields if missing and bump timestamp
     await users.doc(uid).update({
-      if (!(data.containsKey('displayName')) || data['displayName'] == null) 'displayName': user.displayName,
-      if (!(data.containsKey('photoURL'))    || data['photoURL'] == null)    'photoURL': user.photoURL,
-      if (!(data.containsKey('email'))       || data['email'] == null)       'email': user.email,
+      if (!(data.containsKey('displayName')) || data['displayName'] == null)
+        'displayName': user.displayName,
+      if (!(data.containsKey('photoURL')) || data['photoURL'] == null)
+        'photoURL': user.photoURL,
+      if (!(data.containsKey('email')) || data['email'] == null)
+        'email': user.email,
       'updatedAt': now,
     });
   }
@@ -116,10 +108,15 @@ Future<UserCredential?> signInWithGoogleEnforcingRole({
 }
 
 Future<void> _forceSignOut() async {
-  try { await FirebaseAuth.instance.signOut(); } catch (_) {}
-  try { await _googleSignIn.disconnect(); } catch (_) {}
-  try { await _googleSignIn.signOut(); } catch (_) {}
+  try {
+    await FirebaseAuth.instance.signOut();
+  } catch (_) {}
+  try {
+    await _googleSignIn.disconnect();
+  } catch (_) {}
+  try {
+    await _googleSignIn.signOut();
+  } catch (_) {}
 }
 
-/// Optional: unified sign-out you can use from your Home screens
 Future<void> signOutGoogleAndFirebase() => _forceSignOut();

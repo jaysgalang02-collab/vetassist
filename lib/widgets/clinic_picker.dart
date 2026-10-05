@@ -28,14 +28,19 @@ class _ClinicPickerState extends State<ClinicPicker> {
     return AlertDialog(
       title: const Text('Choose your vet clinic'),
       content: SizedBox(
-        width: 360, height: 360,
+        width: 360,
+        height: 360,
         child: StreamBuilder<QuerySnapshot>(
           stream: q.snapshots(),
           builder: (ctx, snap) {
-            if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+            if (!snap.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
             final docs = snap.data!.docs;
             if (docs.isEmpty) {
-              return const Center(child: Text('No clinics yet. Please ask your clinic to register.'));
+              return const Center(
+                  child: Text(
+                      'No clinics yet. Please ask your clinic to register.'));
             }
             return ListView.separated(
               itemCount: docs.length,
@@ -47,7 +52,9 @@ class _ClinicPickerState extends State<ClinicPicker> {
                 final address = (d['address'] ?? '') as String;
                 final selected = _clinicId == id;
                 return ListTile(
-                  leading: Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off),
+                  leading: Icon(selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off),
                   title: Text(name),
                   subtitle: Text(address),
                   onTap: () => setState(() => _clinicId = id),
@@ -58,9 +65,13 @@ class _ClinicPickerState extends State<ClinicPicker> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel')),
         FilledButton(
-          onPressed: _clinicId == null ? null : () => Navigator.pop(context, _clinicId),
+          onPressed: _clinicId == null
+              ? null
+              : () => Navigator.pop(context, _clinicId),
           child: const Text('Select'),
         ),
       ],
@@ -68,7 +79,6 @@ class _ClinicPickerState extends State<ClinicPicker> {
   }
 }
 
-/// helper to open picker and return id (or null on cancel)
 Future<String?> pickClinic(BuildContext context, {String? initial}) async {
   return showDialog<String>(
     context: context,

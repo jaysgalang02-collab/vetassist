@@ -1,11 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-/// Vaccines & Reminders tab for staff/admin.
-///
-/// - Left: Recent Vaccinations (newest first)
-/// - Right: Upcoming Reminders (soonest first)
-/// - Tap any row to see a bottom sheet with Pet + Owner + Item details
 class VaccinesRemindersTab extends StatefulWidget {
   final String clinicId;
   const VaccinesRemindersTab({super.key, required this.clinicId});
@@ -15,7 +10,6 @@ class VaccinesRemindersTab extends StatefulWidget {
 }
 
 class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
-  // Simple caches to avoid refetching the same docs while the tab is alive
   final Map<String, Map<String, dynamic>?> _patientCache = {};
   final Map<String, Map<String, dynamic>?> _userCache = {};
 
@@ -31,13 +25,11 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
 
     return Row(
       children: [
-        // Recent Vaccinations
         Expanded(
           child: _CardSection(
             title: 'Recent Vaccinations',
             stream: vaxQuery.snapshots(),
             buildList: (docs, cs) {
-              // Newest first by dateGiven -> createdAt
               docs.sort((a, b) {
                 final ad = _tsToDate(a.data()['dateGiven']) ??
                     _tsToDate(a.data()['createdAt']) ??
@@ -63,8 +55,7 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
 
                   return ListTile(
                     dense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                     leading: const Icon(Icons.vaccines),
                     title: Text(
                       name,
@@ -74,7 +65,8 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
                     ),
                     trailing: Text(
                       when == null ? '' : _fmt(when),
-                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                      style:
+                          TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,
@@ -94,16 +86,12 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
             emptyPlaceholder: const Text('No vaccinations recorded.'),
           ),
         ),
-
         const VerticalDivider(width: 1),
-
-        // Upcoming Reminders
         Expanded(
           child: _CardSection(
             title: 'Upcoming Reminders',
             stream: remQuery.snapshots(),
             buildList: (docs, cs) {
-              // Soonest first by when/dueAt -> createdAt
               docs.sort((a, b) {
                 final ad = _tsToDate(a.data()['when']) ??
                     _tsToDate(a.data()['dueAt']) ??
@@ -126,15 +114,14 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
                   final title = (m['title'] ?? '—').toString();
                   final pid = (m['patientId'] ?? '').toString();
                   final ownerUidFromReminder = (m['ownerUid'] ?? '').toString();
-                  // Note: our reminder write used staff uid in 'uid'; owner is derived from patient.
+
                   final when = _tsToDate(m['when']) ??
                       _tsToDate(m['dueAt']) ??
                       _tsToDate(m['createdAt']);
 
                   return ListTile(
                     dense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                     leading: const Icon(Icons.alarm),
                     title: Text(
                       title,
@@ -144,7 +131,8 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
                     ),
                     trailing: Text(
                       when == null ? '' : _fmt(when),
-                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                      style:
+                          TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,
@@ -155,7 +143,6 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
                       itemId: id,
                       itemData: m,
                       patientId: pid,
-                      // owner may be blank in reminder; we'll resolve from patient
                       ownerUid: ownerUidFromReminder,
                     ),
                   );
@@ -169,8 +156,6 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
     );
   }
 
-  // ---------- Detail Sheet ----------
-
   Future<void> _showDetailSheet({
     required BuildContext context,
     required _DetailKind kind,
@@ -181,7 +166,6 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
   }) async {
     final cs = Theme.of(context).colorScheme;
 
-    // Fetch patient (and resolve ownerUid if missing)
     final patient = await _getPatient(patientId);
     final resolvedOwnerUid =
         ownerUid.isNotEmpty ? ownerUid : (patient?['ownerUid'] ?? '');
@@ -194,14 +178,13 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
 
     final ownerName = _bestOwnerLabel(owner, resolvedOwnerUid);
 
-    // item-specific fields
     String title;
     List<_KeyValue> facts = [];
 
     if (kind == _DetailKind.vaccine) {
       title = (itemData['name'] ?? 'Vaccine').toString();
-      final date = _tsToDate(itemData['dateGiven']) ??
-          _tsToDate(itemData['createdAt']);
+      final date =
+          _tsToDate(itemData['dateGiven']) ?? _tsToDate(itemData['createdAt']);
       facts = [
         _KeyValue('Type', 'Vaccine'),
         _KeyValue('Date', date == null ? '—' : _fmt(date)),
@@ -238,7 +221,6 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header — item title
                 Row(
                   children: [
                     Icon(
@@ -252,14 +234,14 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
                       child: Text(
                         title,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 18),
-                        maxLines: 2, overflow: TextOverflow.ellipsis,
+                            fontWeight: FontWeight.w700, fontSize: 18),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Pet card
                 _InfoCard(
                   leading: const Icon(Icons.pets),
                   title: petName,
@@ -270,14 +252,12 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
                   ].join(' • '),
                 ),
                 const SizedBox(height: 8),
-                // Owner card
                 _InfoCard(
                   leading: const Icon(Icons.person),
                   title: ownerName,
                   subtitle: (owner?['email'] ?? '').toString(),
                 ),
                 const SizedBox(height: 12),
-                // Facts
                 _FactsGrid(facts: facts),
               ],
             ),
@@ -328,7 +308,6 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
     return '${uid.substring(0, 4)}…${uid.substring(uid.length - 4)}';
   }
 
-  // Timestamp/Date safe cast
   static DateTime? _tsToDate(dynamic v) {
     if (v == null) return null;
     if (v is Timestamp) return v.toDate();
@@ -336,7 +315,6 @@ class _VaccinesRemindersTabState extends State<VaccinesRemindersTab> {
     return null;
   }
 
-  // yyyy-MM-dd HH:mm (no intl)
   static String _fmt(DateTime d) =>
       '${d.year}-${_p2(d.month)}-${_p2(d.day)} ${_p2(d.hour)}:${_p2(d.minute)}';
   static String _p2(int n) => n.toString().padLeft(2, '0');
@@ -393,8 +371,7 @@ class _InfoCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style:
-                      TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -467,7 +444,6 @@ class _CardSection extends StatelessWidget {
   final String title;
   final Stream<QuerySnapshot<Map<String, dynamic>>> stream;
 
-  /// Build the list body using already-fetched docs (we sort client-side).
   final Widget Function(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
     ColorScheme cs,

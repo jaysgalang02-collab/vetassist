@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../../utils/toast.dart';
-import '../staff_common.dart';
+import '../medical_record_editor.dart';
+import '../staff_add_patient_screen.dart';
 
 class PatientsTab extends StatefulWidget {
   final String clinicId;
@@ -14,9 +15,24 @@ class PatientsTab extends StatefulWidget {
 
 class _PatientsTabState extends State<PatientsTab> {
   final _qCtrl = TextEditingController();
-  String _species = 'all'; // all | canine | feline
+  String _species = 'all';
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _patients = _patientStream();
 
-  // Simple in-memory cache so we don’t fetch the same user multiple times.
+  Stream<QuerySnapshot<Map<String, dynamic>>> _patientStream() =>
+      FirebaseFirestore.instance
+          .collection('patients')
+          .where('clinicId', isEqualTo: widget.clinicId)
+          .snapshots();
+
+  @override
+  void didUpdateWidget(covariant PatientsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.clinicId != widget.clinicId) {
+      _patients = _patientStream();
+      _ownerNameCache.clear();
+    }
+  }
+
   final Map<String, String?> _ownerNameCache = {};
 
   @override
@@ -25,14 +41,15 @@ class _PatientsTabState extends State<PatientsTab> {
     super.dispose();
   }
 
-  // Fetch display name (or email) of owner from users/{uid}, with caching.
   Future<String?> _fetchOwnerLabel(String ownerUid) async {
     if (ownerUid.isEmpty) return null;
     if (_ownerNameCache.containsKey(ownerUid)) return _ownerNameCache[ownerUid];
 
     try {
-      final doc =
-          await FirebaseFirestore.instance.collection('users').doc(ownerUid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(ownerUid)
+          .get();
       final data = doc.data();
       String? label;
       if (data != null) {
@@ -45,7 +62,6 @@ class _PatientsTabState extends State<PatientsTab> {
       _ownerNameCache[ownerUid] = label;
       return label;
     } catch (_) {
-      // Fail silently; we'll show a short UID fallback.
       _ownerNameCache[ownerUid] = null;
       return null;
     }
@@ -54,32 +70,69 @@ class _PatientsTabState extends State<PatientsTab> {
   String _shortUid(String uid) {
     if (uid.length <= 8) return uid;
     return '${uid.substring(0, 4)}…${uid.substring(uid.length - 4)}';
-    // e.g. VsWX…c973
+  }
+
+  Future<void> _addPatient() async {
+    final added = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StaffAddPatientScreen(clinicId: widget.clinicId),
+      ),
+    );
+    if (added == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Patient added to the clinic.')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final q = _qCtrl.text.trim();
-    final clinicId = widget.clinicId;
-
-    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
-        .collection('patients')
-        .where('clinicId', isEqualTo: clinicId);
-
-    if (_species == 'canine') {
-      query = query.where('species', isEqualTo: 'canine');
-    } else if (_species == 'feline') {
-      query = query.where('species', isEqualTo: 'feline');
-    }
-
-    if (q.isNotEmpty) {
-      query = query.orderBy('name').startAt([q]).endAt(['$q\uf8ff']);
-    } else {
-      query = query.orderBy('name');
-    }
+    final q = _qCtrl.text.trim().toLowerCase();
 
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+          child: LayoutBuilder(builder: (context, constraints) {
+            final compact = constraints.maxWidth < 430 ||
+                MediaQuery.textScalerOf(context).scale(14) > 18;
+            final title = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Clinic patients',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Manage pets assigned to this clinic.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            );
+            final button = FilledButton.icon(
+              onPressed: _addPatient,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add patient'),
+            );
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [title, const SizedBox(height: 12), button],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: title),
+                const SizedBox(width: 12),
+                button,
+              ],
+            );
+          }),
+        ),
         Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -115,12 +168,39 @@ class _PatientsTabState extends State<PatientsTab> {
         ),
         Expanded(
           child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: query.snapshots(),
+            stream: _patients,
             builder: (ctx, snap) {
+              if (snap.hasError) {
+                return Center(
+                    child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.cloud_off_outlined, size: 36),
+                          const SizedBox(height: 12),
+                          const Text(
+                              'Patients could not load. Please check your connection and try again.',
+                              textAlign: TextAlign.center),
+                          TextButton.icon(
+                              onPressed: () =>
+                                  setState(() => _patients = _patientStream()),
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry')),
+                        ])));
+              }
               if (!snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final docs = snap.data!.docs;
+              final docs = snap.data!.docs.where((doc) {
+                final data = doc.data();
+                return (_species == 'all' || data['species'] == _species) &&
+                    (data['name'] ?? '').toString().toLowerCase().contains(q);
+              }).toList()
+                ..sort((a, b) => (a.data()['name'] ?? '')
+                    .toString()
+                    .toLowerCase()
+                    .compareTo(
+                        (b.data()['name'] ?? '').toString().toLowerCase()));
               if (docs.isEmpty) {
                 return const Center(child: Text('No patients found.'));
               }
@@ -145,14 +225,12 @@ class _PatientsTabState extends State<PatientsTab> {
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,
                     ),
-                    // Owner NAME (fallback to email, then short UID)
                     subtitle: FutureBuilder<String?>(
                       future: _fetchOwnerLabel(ownerUid),
                       builder: (context, snap) {
-                        final ownerLabel =
-                            snap.data ?? (ownerUid.isEmpty ? '—' : _shortUid(ownerUid));
-                        final text =
-                            'Species: $species • Owner: $ownerLabel';
+                        final ownerLabel = snap.data ??
+                            (ownerUid.isEmpty ? '—' : _shortUid(ownerUid));
+                        final text = 'Species: $species • Owner: $ownerLabel';
                         return Text(
                           text,
                           maxLines: 1,
@@ -165,8 +243,10 @@ class _PatientsTabState extends State<PatientsTab> {
                       onSelected: (k) => _handleAction(k, patientId, data),
                       itemBuilder: (_) => const [
                         PopupMenuItem(value: 'vax', child: Text('Add vaccine')),
-                        PopupMenuItem(value: 'visit', child: Text('Add visit/treatment')),
-                        PopupMenuItem(value: 'rem', child: Text('Add reminder')),
+                        PopupMenuItem(
+                            value: 'visit', child: Text('Add visit/treatment')),
+                        PopupMenuItem(
+                            value: 'rem', child: Text('Add reminder')),
                       ],
                     ),
                   );
@@ -230,8 +310,8 @@ class _PatientsTabState extends State<PatientsTab> {
                       initialDate: date!,
                     );
                     if (picked != null) {
-                      setState(() => date = DateTime(
-                          picked.year, picked.month, picked.day, date!.hour, date!.minute));
+                      setState(() => date = DateTime(picked.year, picked.month,
+                          picked.day, date!.hour, date!.minute));
                     }
                   },
                 ),
@@ -240,7 +320,9 @@ class _PatientsTabState extends State<PatientsTab> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               final ownerUid = (p['ownerUid'] as String?) ?? '';
@@ -258,7 +340,8 @@ class _PatientsTabState extends State<PatientsTab> {
                 'clinicId': clinicId,
                 'createdAt': FieldValue.serverTimestamp(),
               });
-              if (mounted) Navigator.pop(context);
+              if (!mounted) return;
+              Navigator.pop(context);
               toast(context, 'Vaccine recorded.');
             },
             child: const Text('Save'),
@@ -270,85 +353,8 @@ class _PatientsTabState extends State<PatientsTab> {
 
   Future<void> _showAddVisitDialog(
       String patientId, Map<String, dynamic> p) async {
-    final diagnosisCtrl = TextEditingController();
-    final notesCtrl = TextEditingController();
-    DateTime date = DateTime.now();
-
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Record visit / treatment'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                  decoration: const InputDecoration(labelText: 'Diagnosis (optional)'),
-                  controller: diagnosisCtrl),
-              const SizedBox(height: 8),
-              TextField(
-                controller: notesCtrl,
-                maxLines: 4,
-                decoration: const InputDecoration(labelText: 'Treatment / notes'),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Date: ${date.toLocal().toString().split(".").first}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.calendar_today),
-                    onPressed: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: date,
-                        firstDate: DateTime(2010),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) {
-                        setState(() => date = DateTime(
-                            picked.year, picked.month, picked.day, date.hour, date.minute));
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              final ownerUid = (p['ownerUid'] as String?) ?? '';
-              final clinicId = (p['clinicId'] as String?) ?? '';
-              if (ownerUid.isEmpty || clinicId.isEmpty) {
-                toast(context, 'Missing owner/clinic.');
-                return;
-              }
-
-              await FirebaseFirestore.instance.collection('visits').add({
-                'ownerUid': ownerUid,
-                'patientId': patientId,
-                'date': Timestamp.fromDate(date),
-                'clinicId': clinicId,
-                'diagnosis': diagnosisCtrl.text.trim(),
-                'notes': notesCtrl.text.trim(),
-                'createdAt': FieldValue.serverTimestamp(),
-              });
-              if (mounted) Navigator.pop(context);
-              toast(context, 'Visit saved.');
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+    await openMedicalRecordEditor(context,
+        clinicId: widget.clinicId, patientId: patientId);
   }
 
   Future<void> _showAddReminderDialog(
@@ -409,8 +415,8 @@ class _PatientsTabState extends State<PatientsTab> {
                       lastDate: DateTime(2100),
                     );
                     if (picked != null) {
-                      setState(() => when = DateTime(
-                          picked.year, picked.month, picked.day, when.hour, when.minute));
+                      setState(() => when = DateTime(picked.year, picked.month,
+                          picked.day, when.hour, when.minute));
                     }
                   },
                 ),
@@ -419,10 +425,11 @@ class _PatientsTabState extends State<PatientsTab> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
-              // staff UID (must equal request.auth.uid per rules)
               final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
               final clinicId = (p['clinicId'] as String?) ?? '';
               if (currentUid.isEmpty || clinicId.isEmpty) {
@@ -432,17 +439,18 @@ class _PatientsTabState extends State<PatientsTab> {
 
               final ts = Timestamp.fromDate(when);
               await FirebaseFirestore.instance.collection('reminders').add({
-                'uid': currentUid,                   // rules check this
+                'uid': currentUid,
                 'type': normalizeType(type),
                 'title': titleCtrl.text.trim(),
                 'clinicId': clinicId,
-                'when': ts,                          // show in UI
-                'dueAt': ts,                         // legacy compatibility
+                'when': ts,
+                'dueAt': ts,
                 'patientId': patientId,
                 'createdAt': FieldValue.serverTimestamp(),
                 'updatedAt': FieldValue.serverTimestamp(),
               });
-              if (mounted) Navigator.pop(context);
+              if (!mounted) return;
+              Navigator.pop(context);
               toast(context, 'Reminder created.');
             },
             child: const Text('Create'),

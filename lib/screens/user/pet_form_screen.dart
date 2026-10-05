@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 class PetFormScreen extends StatefulWidget {
   static const route = '/pet-form';
 
-  /// If provided, the screen opens in **Edit** mode and loads this patient doc.
   final String? editPatientId;
 
   const PetFormScreen({super.key, this.editPatientId});
@@ -17,7 +16,6 @@ class PetFormScreen extends StatefulWidget {
 class _PetFormScreenState extends State<PetFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _name = TextEditingController();
   final _species = TextEditingController();
   final _breed = TextEditingController();
@@ -27,14 +25,12 @@ class _PetFormScreenState extends State<PetFormScreen> {
   final _allergies = TextEditingController();
   final _notes = TextEditingController();
 
-  // State
-  String? _patientId; // if set → EDIT mode
+  String? _patientId;
   bool _loading = true;
   bool _saving = false;
 
-  // Allowed options (updated per request)
-  final _speciesOptions = const ['canine', 'feline']; // ✅ only these
-  final _sexOptions = const ['male', 'female'];       // ✅ remove "unknown"
+  final _speciesOptions = const ['canine', 'feline'];
+  final _sexOptions = const ['male', 'female'];
 
   @override
   void initState() {
@@ -43,10 +39,8 @@ class _PetFormScreenState extends State<PetFormScreen> {
   }
 
   Future<void> _bootstrap() async {
-    // 1) Prefer constructor param
     String? patientId = widget.editPatientId;
 
-    // 2) Fallback to route args if constructor wasn't used
     if (patientId == null) {
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is Map && args['patientId'] is String) {
@@ -59,12 +53,10 @@ class _PetFormScreenState extends State<PetFormScreen> {
     _patientId = patientId;
 
     if (_patientId == null) {
-      // ADD MODE
       setState(() => _loading = false);
       return;
     }
 
-    // EDIT MODE → fetch doc and prefill
     try {
       final snap = await FirebaseFirestore.instance
           .collection('patients')
@@ -126,11 +118,11 @@ class _PetFormScreenState extends State<PetFormScreen> {
     setState(() => _saving = true);
 
     try {
-      final double? weightKg =
-          _weight.text.trim().isEmpty ? null : double.tryParse(_weight.text.trim());
+      final double? weightKg = _weight.text.trim().isEmpty
+          ? null
+          : double.tryParse(_weight.text.trim());
 
       if (_patientId == null) {
-        // ---------- ADD ----------
         String? clinicId;
         try {
           final me = await db.collection('users').doc(uid).get();
@@ -146,7 +138,8 @@ class _PetFormScreenState extends State<PetFormScreen> {
           'sex': _sex.text.trim(),
           'colorMarkings': _color.text.trim(),
           'weightKg': weightKg,
-          'allergies': _allergies.text.trim().isEmpty ? null : _allergies.text.trim(),
+          'allergies':
+              _allergies.text.trim().isEmpty ? null : _allergies.text.trim(),
           'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
           'ownerUid': uid,
           if (ownerName.isNotEmpty) 'ownerName': ownerName,
@@ -161,7 +154,6 @@ class _PetFormScreenState extends State<PetFormScreen> {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Pet added')));
       } else {
-        // ---------- UPDATE ----------
         final ref = db.collection('patients').doc(_patientId);
         await ref.update({
           'name': _name.text.trim(),
@@ -170,7 +162,8 @@ class _PetFormScreenState extends State<PetFormScreen> {
           'sex': _sex.text.trim(),
           'colorMarkings': _color.text.trim(),
           'weightKg': weightKg,
-          'allergies': _allergies.text.trim().isEmpty ? null : _allergies.text.trim(),
+          'allergies':
+              _allergies.text.trim().isEmpty ? null : _allergies.text.trim(),
           'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
           'updatedAt': FieldValue.serverTimestamp(),
         });
@@ -194,7 +187,6 @@ class _PetFormScreenState extends State<PetFormScreen> {
     final cs = Theme.of(context).colorScheme;
     final isEdit = _patientId != null;
 
-    // Current values sanitized to stay inside allowed options
     final String? _speciesValue =
         _speciesOptions.contains(_species.text.trim().toLowerCase())
             ? _species.text.trim().toLowerCase()
@@ -233,8 +225,6 @@ class _PetFormScreenState extends State<PetFormScreen> {
                                 : null,
                           ),
                           const SizedBox(height: 12),
-
-                          // ✅ Species dropdown (only canine/feline)
                           DropdownButtonFormField<String>(
                             value: _speciesValue,
                             decoration: const InputDecoration(
@@ -247,9 +237,9 @@ class _PetFormScreenState extends State<PetFormScreen> {
                                       child: Text(o),
                                     ))
                                 .toList(),
-                            onChanged: (v) => setState(() => _species.text = v ?? ''),
+                            onChanged: (v) =>
+                                setState(() => _species.text = v ?? ''),
                           ),
-
                           const SizedBox(height: 12),
                           TextFormField(
                             controller: _breed,
@@ -260,8 +250,6 @@ class _PetFormScreenState extends State<PetFormScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-
-                          // ✅ Sex dropdown (male/female only)
                           DropdownButtonFormField<String>(
                             value: _sexValue,
                             decoration: const InputDecoration(
@@ -274,13 +262,13 @@ class _PetFormScreenState extends State<PetFormScreen> {
                                       child: Text(o),
                                     ))
                                 .toList(),
-                            onChanged: (v) => setState(() => _sex.text = v ?? ''),
+                            onChanged: (v) =>
+                                setState(() => _sex.text = v ?? ''),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 14),
-
                     _Section(
                       title: 'Appearance & health',
                       child: Column(
@@ -296,8 +284,8 @@ class _PetFormScreenState extends State<PetFormScreen> {
                           const SizedBox(height: 12),
                           TextFormField(
                             controller: _weight,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             decoration: const InputDecoration(
                               labelText: 'Weight (kg)',
                               prefixIcon: Icon(Icons.monitor_weight_outlined),
@@ -328,7 +316,6 @@ class _PetFormScreenState extends State<PetFormScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 18),
                     SizedBox(
                       width: double.infinity,
@@ -338,9 +325,12 @@ class _PetFormScreenState extends State<PetFormScreen> {
                             ? const SizedBox(
                                 height: 18,
                                 width: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : Icon(isEdit ? Icons.save_as_outlined : Icons.save_outlined),
+                            : Icon(isEdit
+                                ? Icons.save_as_outlined
+                                : Icons.save_outlined),
                         label: Text(isEdit ? 'Update' : 'Save'),
                       ),
                     ),
@@ -349,7 +339,8 @@ class _PetFormScreenState extends State<PetFormScreen> {
                       Text(
                         'Editing existing pet • Changes will update your dashboard and records',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                        style:
+                            TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                       ),
                     ],
                   ],
@@ -359,8 +350,6 @@ class _PetFormScreenState extends State<PetFormScreen> {
     );
   }
 }
-
-/* ------------------ helper widgets ------------------ */
 
 class _Section extends StatelessWidget {
   final String title;
@@ -391,7 +380,6 @@ class _Section extends StatelessWidget {
   }
 }
 
-/* ------------------ OPTIONAL typed args for named route ------------------ */
 class PetFormArgs {
   final String? patientId;
   const PetFormArgs({this.patientId});

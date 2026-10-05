@@ -1,6 +1,8 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import '../../widgets/brand_widgets.dart';
 
 class BookVisitScreen extends StatefulWidget {
   static const route = '/book-visit';
@@ -29,7 +31,8 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
 
   String get _uid => FirebaseAuth.instance.currentUser!.uid;
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> _bookingStatusNotificationStream() {
+  Stream<QuerySnapshot<Map<String, dynamic>>>
+      _bookingStatusNotificationStream() {
     return FirebaseFirestore.instance
         .collection('notifications')
         .doc(_uid)
@@ -54,10 +57,8 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
   Future<void> _loadProfile() async {
     setState(() => _loadingProfile = true);
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_uid)
-          .get();
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(_uid).get();
       final data = userDoc.data();
       if (data != null) {
         final clinicId = (data['clinicId'] as String?)?.trim();
@@ -77,7 +78,6 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
         });
       }
     } catch (_) {
-      // ignore and show fallback UI
     } finally {
       if (mounted) setState(() => _loadingProfile = false);
     }
@@ -123,7 +123,8 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
     return '$h:$mm $suffix';
   }
 
-  Future<bool> _isSlotTaken(String clinicId, String dateKey, String timeKey) async {
+  Future<bool> _isSlotTaken(
+      String clinicId, String dateKey, String timeKey) async {
     final q = await FirebaseFirestore.instance
         .collection('bookings')
         .where('clinicId', isEqualTo: clinicId)
@@ -159,7 +160,8 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
         return;
       }
 
-      final bookingRef = FirebaseFirestore.instance.collection('bookings').doc();
+      final bookingRef =
+          FirebaseFirestore.instance.collection('bookings').doc();
       final ownerLabel = (_ownerName != null && _ownerName!.isNotEmpty)
           ? _ownerName!
           : (FirebaseAuth.instance.currentUser?.email ?? _uid);
@@ -298,10 +300,13 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
                 if (!snap.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final docs = [...snap.data!.docs]
-                  ..sort((a, b) {
-                    final ta = (a.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
-                    final tb = (b.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+                final docs = [...snap.data!.docs]..sort((a, b) {
+                    final ta = (a.data()['createdAt'] as Timestamp?)
+                            ?.millisecondsSinceEpoch ??
+                        0;
+                    final tb = (b.data()['createdAt'] as Timestamp?)
+                            ?.millisecondsSinceEpoch ??
+                        0;
                     return tb.compareTo(ta);
                   });
                 return Column(
@@ -311,7 +316,8 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
                         const Expanded(
                           child: Text(
                             'Booking status updates',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w700),
                           ),
                         ),
                         TextButton(
@@ -339,13 +345,17 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
                           itemBuilder: (_, i) {
                             final d = docs[i];
                             final data = d.data();
-                            final title = (data['title'] as String?) ?? 'Booking update';
+                            final title =
+                                (data['title'] as String?) ?? 'Booking update';
                             final body = (data['body'] as String?) ?? '';
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.notifications_active_outlined),
-                              title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              subtitle: Text(body, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              leading: const Icon(
+                                  Icons.notifications_active_outlined),
+                              title: Text(title,
+                                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                              subtitle: Text(body,
+                                  maxLines: 2, overflow: TextOverflow.ellipsis),
                               trailing: Text(
                                 _tsLabel(data['createdAt'] as Timestamp?),
                                 style: Theme.of(context).textTheme.bodySmall,
@@ -417,12 +427,10 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
       );
     }
 
-    final selectedDateLabel = _selectedDate == null
-        ? 'Select date'
-        : _dateLabel(_selectedDate!);
-    final selectedTimeLabel = _selectedTime == null
-        ? 'Select time'
-        : _timeLabel(_selectedTime!);
+    final selectedDateLabel =
+        _selectedDate == null ? 'Select date' : _dateLabel(_selectedDate!);
+    final selectedTimeLabel =
+        _selectedTime == null ? 'Select time' : _timeLabel(_selectedTime!);
 
     return Scaffold(
       appBar: AppBar(
@@ -445,7 +453,8 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
                         top: -5,
                         right: -5,
                         child: Container(
-                          constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                          constraints:
+                              const BoxConstraints(minWidth: 18, minHeight: 18),
                           padding: const EdgeInsets.symmetric(horizontal: 4),
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.error,
@@ -469,9 +478,19 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
           ),
         ],
       ),
-      body: ListView(
+      body: SafeArea(
+          child: ContentFrame(
+              child: ListView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.all(16),
         children: [
+          Text('Plan their next visit',
+              style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 8),
+          Text(
+              'Choose your pet and preferred time. Your clinic will confirm the appointment.',
+              style: TextStyle(color: cs.onSurfaceVariant)),
+          const SizedBox(height: 16),
           if (_clinicName != null && _clinicName!.isNotEmpty)
             Text(
               'Clinic: $_clinicName',
@@ -487,22 +506,17 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
             }),
           ),
           const SizedBox(height: 12),
-          Row(
+          AdaptiveActions(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.calendar_today),
-                  label: Text(selectedDateLabel),
-                  onPressed: _pickDate,
-                ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.calendar_today),
+                label: Text(selectedDateLabel),
+                onPressed: _pickDate,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.access_time),
-                  label: Text(selectedTimeLabel),
-                  onPressed: _pickTime,
-                ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.access_time),
+                label: Text(selectedTimeLabel),
+                onPressed: _pickTime,
               ),
             ],
           ),
@@ -524,7 +538,8 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
                 );
                 _selectedTime = slot.start;
               });
-              _showSnack('Slot selected: ${_dateLabel(slot.date)} ${_timeLabel(slot.start)}');
+              _showSnack(
+                  'Slot selected: ${_dateLabel(slot.date)} ${_timeLabel(slot.start)}');
             },
           ),
           const SizedBox(height: 12),
@@ -562,7 +577,7 @@ class _BookVisitScreenState extends State<BookVisitScreen> {
           const SizedBox(height: 8),
           _MyBookingRequestsList(ownerUid: _uid),
         ],
-      ),
+      ))),
     );
   }
 }
@@ -589,10 +604,13 @@ class _MyBookingRequestsList extends StatelessWidget {
       stream: stream,
       builder: (context, snap) {
         if (!snap.hasData) return const LinearProgressIndicator();
-        final docs = [...snap.data!.docs]
-          ..sort((a, b) {
-            final ta = (a.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
-            final tb = (b.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+        final docs = [...snap.data!.docs]..sort((a, b) {
+            final ta =
+                (a.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ??
+                    0;
+            final tb =
+                (b.data()['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ??
+                    0;
             return tb.compareTo(ta);
           });
         if (docs.isEmpty) {
@@ -601,20 +619,24 @@ class _MyBookingRequestsList extends StatelessWidget {
         return Column(
           children: docs.take(10).map((d) {
             final data = d.data();
-            final status = ((data['status'] as String?) ?? 'pending').toLowerCase();
+            final status =
+                ((data['status'] as String?) ?? 'pending').toLowerCase();
             final dateKey = (data['dateKey'] as String?) ?? '--';
             final timeKey = (data['timeKey'] as String?) ?? '--';
             final clinicName = (data['clinicName'] as String?) ?? 'Clinic';
             final patientName = (data['patientName'] as String?) ?? 'Pet';
             return Card(
               child: ListTile(
-                leading: Icon(Icons.event_note_outlined, color: _statusColor(context, status)),
+                leading: Icon(Icons.event_note_outlined,
+                    color: _statusColor(context, status)),
                 title: Text('$patientName • $clinicName'),
                 subtitle: Text('$dateKey at $timeKey'),
                 trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _statusColor(context, status).withValues(alpha: 0.12),
+                    color:
+                        _statusColor(context, status).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -664,7 +686,8 @@ class _PetDropdown extends StatelessWidget {
           return const Text('No pets found. Add a pet first.');
         }
 
-        if (selectedPatientId != null && docs.every((d) => d.id != selectedPatientId)) {
+        if (selectedPatientId != null &&
+            docs.every((d) => d.id != selectedPatientId)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             onChanged(null, null);
           });
@@ -873,7 +896,8 @@ class _AvailableSlotsListState extends State<_AvailableSlotsList> {
         final timeKey = _timeKey(start);
         final dateTimeKey = '$dateKey|$timeKey';
 
-        if (approvedSlotIds.contains(d.id) || approvedDateTimeKeys.contains(dateTimeKey)) {
+        if (approvedSlotIds.contains(d.id) ||
+            approvedDateTimeKeys.contains(dateTimeKey)) {
           continue;
         }
 
@@ -919,7 +943,8 @@ class _AvailableSlotsListState extends State<_AvailableSlotsList> {
         ..._slots.map((s) {
           return Card(
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               title: Text(_dateLabel(s.date)),
               subtitle: Text('${_timeLabel(s.start)} - ${s.endLabel}'),
               trailing: TextButton(

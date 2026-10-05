@@ -1,0 +1,88 @@
+[
+  {
+    "disease": "parvovirus",
+    "displayName": "parvovirus",
+    "species": "canine",
+    "symptomIds": [
+      "diarrhea",
+      "fever",
+      "lethargy",
+      "loss_of_appetite",
+      "vomiting"
+    ],
+    "labelType": "existing_application_rule_not_confirmed_diagnosis",
+    "backgroundReferenceUrl": "https://www.merckvetmanual.com/digestive-system/infectious-diseases-of-the-gastrointestinal-tract-in-small-animals/canine-parvovirus-infection-parvoviral-enteritis-in-dogs",
+    "referencePurpose": "Background reading only; not a source of observed patient cases, probabilities, or independently validated rules."
+  },
+  {
+    "disease": "distemper",
+    "displayName": "distemper",
+    "species": "canine",
+    "symptomIds": [
+      "cough",
+      "fever",
+      "nasal_discharge",
+      "neurologic_signs",
+      "ocular_discharge"
+    ],
+    "labelType": "existing_application_rule_not_confirmed_diagnosis",
+    "backgroundReferenceUrl": "https://www.merckvetmanual.com/infectious-diseases/canine-distemper/canine-distemper",
+    "referencePurpose": "Background reading only; not a source of observed patient cases, probabilities, or independently validated rules."
+  },
+  {
+    "disease": "heartworm",
+    "displayName": "heartworm",
+    "species": "canine",
+    "symptomIds": [
+      "cough",
+      "lethargy",
+      "respiratory_distress",
+      "weight_loss"
+    ],
+    "labelType": "existing_application_rule_not_confirmed_diagnosis",
+    "backgroundReferenceUrl": "https://www.merckvetmanual.com/circulatory-system/heartworm-disease/heartworm-disease-in-dogs%2C-cats%2C-and-ferrets",
+    "referencePurpose": "Background reading only; not a source of observed patient cases, probabilities, or independently validated rules."
+  },
+  {
+    "disease": "feline_leukemia",
+    "displayName": "feline leukemia",
+    "species": "feline",
+    "symptomIds": [
+      "fever",
+      "lethargy",
+      "pale_gums",
+      "weight_loss"
+    ],
+    "labelType": "existing_application_rule_not_confirmed_diagnosis",
+    "backgroundReferenceUrl": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/feline-leukemia-virus",
+    "referencePurpose": "Background reading only; not a source of observed patient cases, probabilities, or independently validated rules."
+  },
+  {
+    "disease": "fiv",
+    "displayName": "fiv",
+    "species": "feline",
+    "symptomIds": [
+      "fever",
+      "lethargy",
+      "weight_loss"
+    ],
+    "labelType": "existing_application_rule_not_confirmed_diagnosis",
+    "backgroundReferenceUrl": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/feline-immunodeficiency-virus",
+    "referencePurpose": "Background reading only; not a source of observed patient cases, probabilities, or independently validated rules."
+  },
+  {
+    "disease": "feline_uri",
+    "displayName": "feline uri",
+    "species": "feline",
+    "symptomIds": [
+      "cough",
+      "fever",
+      "loss_of_appetite",
+      "nasal_discharge",
+      "ocular_discharge"
+    ],
+    "labelType": "existing_application_rule_not_confirmed_diagnosis",
+    "backgroundReferenceUrl": "https://www.merckvetmanual.com/respiratory-system/respiratory-diseases-of-small-animals/feline-respiratory-disease-complex",
+    "referencePurpose": "Background reading only; not a source of observed patient cases, probabilities, or independently validated rules."
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "datasetKind": "synthetic_demo",
+  "caseCount": 30,
+  "diseaseCount": 6,
+  "symptomCount": 12,
+  "casesPerDisease": 5,
+  "observedPatientCount": 0,
+  "clinicalValidation": "Not performed",
+  "source": "Existing application rules in lib/services/symptom_engine.dart",
+  "driveDatasetUsed": false,
+  "intendedUse": "Software training/evaluation demonstration only, not patient diagnosis or clinical accuracy claims",
+  "limitation": "Cases are correlated generated rule subsets; some symptom patterns repeat. Splitting them does not produce independent clinical validation."
+}

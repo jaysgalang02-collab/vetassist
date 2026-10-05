@@ -56,7 +56,6 @@ class _UserChatScreenState extends State<UserChatScreen> {
         });
       }
     } catch (_) {
-      // ignore
     } finally {
       if (mounted) setState(() => _loadingProfile = false);
     }
@@ -78,8 +77,9 @@ class _UserChatScreenState extends State<UserChatScreen> {
     if (text.isEmpty || clinicId == null) return;
 
     setState(() => _sending = true);
-    final ownerLabel =
-        (_ownerName != null && _ownerName!.isNotEmpty) ? _ownerName! : (_ownerEmail ?? 'Owner');
+    final ownerLabel = (_ownerName != null && _ownerName!.isNotEmpty)
+        ? _ownerName!
+        : (_ownerEmail ?? 'Owner');
 
     try {
       final payload = {
@@ -170,7 +170,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
                         stream: _inboxStream,
                         builder: (context, snap) {
                           if (snap.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
+                            return const Center(
+                                child: CircularProgressIndicator());
                           }
                           final docs = snap.data?.docs ?? const [];
                           if (docs.isNotEmpty) {
@@ -197,11 +198,12 @@ class _UserChatScreenState extends State<UserChatScreen> {
                             itemBuilder: (context, index) {
                               final doc = docs[index];
                               final data = doc.data();
-                              final key =
-                                  _messageKeys.putIfAbsent(doc.id, () => GlobalKey());
-                              final fromStaff = (data['fromStaffUid'] as String?)
-                                      ?.isNotEmpty ==
-                                  true;
+                              final key = _messageKeys.putIfAbsent(
+                                  doc.id, () => GlobalKey());
+                              final fromStaff =
+                                  (data['fromStaffUid'] as String?)
+                                          ?.isNotEmpty ==
+                                      true;
                               final isOwner = !fromStaff;
                               final title = (data['title'] as String?) ?? '';
                               final body = (data['body'] as String?) ?? '';
@@ -213,7 +215,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                     ? Alignment.centerRight
                                     : Alignment.centerLeft,
                                 child: Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 6),
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 6),
                                   padding: const EdgeInsets.all(12),
                                   constraints:
                                       const BoxConstraints(maxWidth: 420),
@@ -307,13 +310,13 @@ class _UserChatScreenState extends State<UserChatScreen> {
       }
       await batch.commit();
     } catch (_) {
-      // ignore
     } finally {
       _markingRead = false;
     }
   }
 
-  void _focusTargetMessage(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+  void _focusTargetMessage(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
     final targetId = _focusMessageId;
     if (_focusHandled || targetId == null || targetId.isEmpty) return;
     final exists = docs.any((d) => d.id == targetId);
@@ -343,9 +346,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
   String _formatTs(Timestamp ts) {
     final dt = ts.toDate();
     final now = DateTime.now();
-    if (dt.year == now.year &&
-        dt.month == now.month &&
-        dt.day == now.day) {
+    if (dt.year == now.year && dt.month == now.month && dt.day == now.day) {
       return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
     return '${dt.month}/${dt.day}/${dt.year}';

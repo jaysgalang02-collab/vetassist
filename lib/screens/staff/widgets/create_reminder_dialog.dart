@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/reminder_service.dart';
 
-/// Open with: `await showCreateReminderDialog(context);`
 Future<bool?> showCreateReminderDialog(BuildContext context) {
   return showDialog<bool>(
     context: context,
@@ -21,7 +20,6 @@ class _CreateReminderDialogState extends State<_CreateReminderDialog> {
   final _titleCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  // default values as in your screenshot
   String _type = 'followup';
   DateTime _when = _roundUp(DateTime.now().add(const Duration(minutes: 30)));
   bool _busy = false;
@@ -62,7 +60,7 @@ class _CreateReminderDialogState extends State<_CreateReminderDialog> {
     setState(() => _busy = true);
     try {
       await ReminderService.createReminder(
-        type: _type,                 // will be normalized inside service
+        type: _type,
         title: _titleCtrl.text,
         when: _when,
       );
@@ -100,14 +98,16 @@ class _CreateReminderDialogState extends State<_CreateReminderDialog> {
                 const SizedBox(height: 6),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Type', style: TextStyle(color: cs.onSurfaceVariant)),
+                  child: Text('Type',
+                      style: TextStyle(color: cs.onSurfaceVariant)),
                 ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   value: _type,
                   isExpanded: true,
                   items: const [
-                    DropdownMenuItem(value: 'followup', child: Text('Follow-up')),
+                    DropdownMenuItem(
+                        value: 'followup', child: Text('Follow-up')),
                     DropdownMenuItem(value: 'vaccine', child: Text('Vaccine')),
                     DropdownMenuItem(value: 'visit', child: Text('Visit')),
                     DropdownMenuItem(value: 'custom', child: Text('Custom')),
@@ -115,10 +115,10 @@ class _CreateReminderDialogState extends State<_CreateReminderDialog> {
                   onChanged: (v) => setState(() => _type = v ?? 'followup'),
                 ),
                 const SizedBox(height: 12),
-
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Title', style: TextStyle(color: cs.onSurfaceVariant)),
+                  child: Text('Title',
+                      style: TextStyle(color: cs.onSurfaceVariant)),
                 ),
                 const SizedBox(height: 6),
                 TextFormField(
@@ -127,21 +127,23 @@ class _CreateReminderDialogState extends State<_CreateReminderDialog> {
                     hintText: 'vaccine',
                     isDense: true,
                   ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Please enter a title' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Please enter a title'
+                      : null,
                 ),
                 const SizedBox(height: 12),
-
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('When', style: TextStyle(color: cs.onSurfaceVariant)),
+                  child: Text('When',
+                      style: TextStyle(color: cs.onSurfaceVariant)),
                 ),
                 const SizedBox(height: 6),
                 InkWell(
                   borderRadius: BorderRadius.circular(10),
                   onTap: _pickDateTime,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 12),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: cs.outlineVariant),
@@ -154,13 +156,13 @@ class _CreateReminderDialogState extends State<_CreateReminderDialog> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 18),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
-                      onPressed: _busy ? null : () => Navigator.of(context).pop(false),
+                      onPressed:
+                          _busy ? null : () => Navigator.of(context).pop(false),
                       child: const Text('Cancel'),
                     ),
                     FilledButton(

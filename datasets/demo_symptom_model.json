@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "status": "trained",
+  "sourceName": "demo_labeled_cases.json",
+  "sourceSha256": "377ff7edd1265776059010fd6716c0a729f0574c0383d5322030712adf48a2ab",
+  "datasetKind": "synthetic_demo",
+  "trainedAtUtc": "2026-10-04T14:42:59.345773Z",
+  "algorithm": "Positive-evidence Naive Bayes with Laplace smoothing; unreported symptoms are unknown",
+  "seed": 42,
+  "trainingCases": 24,
+  "heldoutCases": 6,
+  "classes": [
+    {
+      "species": "canine",
+      "disease": "distemper",
+      "count": 4,
+      "symptomCounts": {
+        "fever": 3,
+        "nasal_discharge": 4,
+        "neurologic_signs": 3,
+        "ocular_discharge": 4,
+        "cough": 3
+      }
+    },
+    {
+      "species": "canine",
+      "disease": "heartworm",
+      "count": 4,
+      "symptomCounts": {
+        "cough": 3,
+        "lethargy": 3,
+        "respiratory_distress": 4,
+        "weight_loss": 3
+      }
+    },
+    {
+      "species": "canine",
+      "disease": "parvovirus",
+      "count": 4,
+      "symptomCounts": {
+        "diarrhea": 4,
+        "lethargy": 3,
+        "loss_of_appetite": 3,
+        "vomiting": 4,
+        "fever": 3
+      }
+    },
+    {
+      "species": "feline",
+      "disease": "feline_leukemia",
+      "count": 4,
+      "symptomCounts": {
+        "fever": 4,
+        "lethargy": 3,
+        "pale_gums": 3,
+        "weight_loss": 3
+      }
+    },
+    {
+      "species": "feline",
+      "disease": "feline_uri",
+      "count": 4,
+      "symptomCounts": {
+        "cough": 3,
+        "fever": 3,
+        "loss_of_appetite": 3,
+        "nasal_discharge": 4,
+        "ocular_discharge": 4
+      }
+    },
+    {
+      "species": "feline",
+      "disease": "fiv",
+      "count": 4,
+      "symptomCounts": {
+        "fever": 3,
+        "lethargy": 3,
+        "weight_loss": 3
+      }
+    }
+  ]
+}

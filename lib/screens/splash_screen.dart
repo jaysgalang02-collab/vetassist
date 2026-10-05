@@ -1,115 +1,71 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-class SplashScreen extends StatefulWidget {
-  static const String route = '/splash';
+import '../theme/vet_theme.dart';
+import '../widgets/brand_widgets.dart';
 
+class SplashScreen extends StatefulWidget {
+  static const route = '/splash';
   const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  static const _logoAsset = 'lib/assets/logo.png';
-  late final AnimationController _fade;
+class _SplashScreenState extends State<SplashScreen> {
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-
-    _fade = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-      lowerBound: 0,
-      upperBound: 1,
-    )..forward();
-
-    // After a short delay, continue to auth gate.
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/auth');
+    _timer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) Navigator.pushReplacementNamed(context, '/auth');
     });
   }
 
   @override
   void dispose() {
-    _fade.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      backgroundColor: cs.primary,
-      body: SafeArea(
-        child: Center(
-          child: FadeTransition(
-            opacity: _fade,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  height: 72,
-                  width: 72,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: const [
-                      BoxShadow(
-                        blurRadius: 16,
-                        spreadRadius: 0,
-                        offset: Offset(0, 8),
-                        color: Color.fromARGB(40, 0, 0, 0),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.asset(
-                      _logoAsset,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
-                        Icons.pets_rounded,
-                        color: cs.primary,
-                        size: 40,
-                      ),
-                    ),
-                  ),
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: VetTheme.forest,
+        body: DecoratedBox(
+          decoration: const BoxDecoration(
+              gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [VetTheme.forest, Color(0xFF286A51)],
+          )),
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(32),
+                child: Entrance(
+                  milliseconds: 700,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const BrandLogo(size: 108),
+                    const SizedBox(height: 28),
+                    Text('VetAssist',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineLarge
+                            ?.copyWith(color: Colors.white)),
+                    const SizedBox(height: 10),
+                    const Text('Care for every paw.',
+                        style:
+                            TextStyle(color: Color(0xFFD5EDDF), fontSize: 16)),
+                    const SizedBox(height: 36),
+                    const Icon(Icons.favorite_rounded,
+                        color: Color(0xFFB7D7B6), size: 20),
+                  ]),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'VetAssist',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: .2,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Care for every paw',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(.9),
-                    fontSize: 12.5,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const SizedBox(
-                  width: 160,
-                  child: LinearProgressIndicator(
-                    backgroundColor: Colors.white24,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      );
 }

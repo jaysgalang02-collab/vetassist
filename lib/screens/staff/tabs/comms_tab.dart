@@ -7,18 +7,30 @@ import '../staff_common.dart';
 class CommsTab extends StatefulWidget {
   final String clinicId;
   final String staffUid;
-  const CommsTab({super.key, required this.clinicId, required this.staffUid});
+  final bool isActive;
+  const CommsTab(
+      {super.key,
+      required this.clinicId,
+      required this.staffUid,
+      this.isActive = true});
 
   @override
   State<CommsTab> createState() => CommsTabState();
 }
 
 class CommsTabState extends State<CommsTab> {
+  bool _composing = false;
   _OwnerOption? _selectedCustomer;
   String? _selectedPatientId;
 
   final _titleCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
+
+  @override
+  void didUpdateWidget(covariant CommsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isActive) _composing = false;
+  }
 
   @override
   void dispose() {
@@ -71,16 +83,15 @@ class CommsTabState extends State<CommsTab> {
         'fromStaffUid': widget.staffUid,
         'createdAt': FieldValue.serverTimestamp(),
       });
-    } catch (_) {
-      // Mirror write is optional; ignore permission errors.
-    }
+    } catch (_) {}
 
     if (!mounted) return;
     toast(context, 'Message sent.');
     _titleCtrl.clear();
     _bodyCtrl.clear();
     setState(() {
-      _selectedPatientId = null; // keep customer, clear pet
+      _composing = false;
+      _selectedPatientId = null;
     });
   }
 
@@ -89,27 +100,6 @@ class CommsTabState extends State<CommsTab> {
       _selectedCustomer = _OwnerOption(uid: ownerUid, label: ownerName);
       _selectedPatientId = null;
     });
-    _markThreadRead(ownerUid);
-  }
-
-  Future<void> _markThreadRead(String ownerUid) async {
-    try {
-      final unread = await FirebaseFirestore.instance
-          .collection('clinic_inbox')
-          .doc(widget.clinicId)
-          .collection('messages')
-          .where('ownerUid', isEqualTo: ownerUid)
-          .where('read', isEqualTo: false)
-          .get();
-      if (unread.docs.isEmpty) return;
-      final batch = FirebaseFirestore.instance.batch();
-      for (final doc in unread.docs) {
-        batch.update(doc.reference, {'read': true});
-      }
-      await batch.commit();
-    } catch (_) {
-      // ignore permission errors; this is best-effort only
-    }
   }
 
   Future<void> _openConversation(
@@ -150,13 +140,17 @@ class CommsTabState extends State<CommsTab> {
       final ownerName = (data['ownerName'] as String?)?.trim();
       final owner = _OwnerOption(
         uid: ownerUid,
-        label: ownerName != null && ownerName.isNotEmpty ? ownerName : _shortUid(ownerUid),
+        label: ownerName != null && ownerName.isNotEmpty
+            ? ownerName
+            : _shortUid(ownerUid),
       );
       if (!mounted) return;
       _handleThreadTap(owner.uid, owner.label);
       await _openConversation(owner, focusMessageId: messageId);
     } catch (_) {
-      // ignore focus errors
+      if (mounted) {
+        toast(context, 'Could not open this conversation. Please try again.');
+      }
     }
   }
 
@@ -233,6 +227,41 @@ class CommsTabState extends State<CommsTab> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 900;
+        if (!isWide) {
+          if (_composing) {
+            return PopScope(
+              canPop: !widget.isActive,
+              onPopInvokedWithResult: (didPop, result) {
+                if (!didPop && widget.isActive) {
+                  setState(() => _composing = false);
+                }
+              },
+              child: Column(children: [
+                Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => setState(() => _composing = false),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Back to conversations'),
+                    )),
+                Expanded(child: composePane),
+              ]),
+            );
+          }
+          return Column(children: [
+            Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => setState(() => _composing = true),
+                    icon: const Icon(Icons.edit_square),
+                    label: const Text('New message'),
+                  ),
+                )),
+            Expanded(child: inboxPane),
+          ]);
+        }
         return Flex(
           direction: isWide ? Axis.horizontal : Axis.vertical,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -247,9 +276,6 @@ class CommsTabState extends State<CommsTab> {
   }
 }
 
-/* ----------------------------- Widgets ---------------------------------- */
-
-/// Dropdown of customers in the clinic (users where role == 'customer' and clinicId matches)
 class _CustomerDropdown extends StatelessWidget {
   final String clinicId;
   final _OwnerOption? selected;
@@ -274,13 +300,17 @@ class _CustomerDropdown extends StatelessWidget {
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const ListTile(
-            leading: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            leading: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2)),
             title: Text('Loading customers...'),
           );
         }
         if (snap.hasError) {
           return ListTile(
-            leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            leading:
+                const Icon(Icons.warning_amber_rounded, color: Colors.orange),
             title: const Text('Cannot load customers'),
             subtitle: Text('${snap.error}'),
           );
@@ -297,7 +327,8 @@ class _CustomerDropdown extends StatelessWidget {
               : (email != null && email.isNotEmpty ? email : _shortUid(uid));
           return _OwnerOption(uid: uid, label: label);
         }).toList()
-          ..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+          ..sort(
+              (a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
 
         if (ownerOptions.isEmpty) {
           return const ListTile(
@@ -338,7 +369,6 @@ class _CustomerDropdown extends StatelessWidget {
   }
 }
 
-/// Optional pet dropdown filtered by ownerUid
 class _PetDropdown extends StatelessWidget {
   final String? ownerUid;
   final String? selectedPatientId;
@@ -381,19 +411,18 @@ class _PetDropdown extends StatelessWidget {
           );
         }
         final docs = snap.data!.docs;
-        final petEntries = docs
-            .map((d) {
-              final data = d.data();
-              final name = (data['name'] as String?)?.trim();
-              return {
-                'id': d.id,
-                'name': (name != null && name.isNotEmpty) ? name : d.id,
-              };
-            })
-            .toList()
-          ..sort((a, b) => (a['name'] as String).toLowerCase().compareTo((b['name'] as String).toLowerCase()));
+        final petEntries = docs.map((d) {
+          final data = d.data();
+          final name = (data['name'] as String?)?.trim();
+          return {
+            'id': d.id,
+            'name': (name != null && name.isNotEmpty) ? name : d.id,
+          };
+        }).toList()
+          ..sort((a, b) => (a['name'] as String)
+              .toLowerCase()
+              .compareTo((b['name'] as String).toLowerCase()));
 
-        // IMPORTANT: allow a nullable value for the "None" option.
         return DropdownButtonFormField<String?>(
           value: selectedPatientId,
           isExpanded: true,
@@ -482,9 +511,9 @@ class _ConversationList extends StatelessWidget {
           itemBuilder: (_, i) {
             final thread = threads[i];
             final isSelected = selectedOwnerUid == thread.ownerUid;
-            final tileColor =
-                Color.lerp(cs.surface, cs.primaryContainer, isSelected ? 0.35 : 0.0) ??
-                    cs.surface;
+            final tileColor = Color.lerp(
+                    cs.surface, cs.primaryContainer, isSelected ? 0.35 : 0.0) ??
+                cs.surface;
             final option =
                 _OwnerOption(uid: thread.ownerUid, label: thread.displayName);
             final preview = _buildPreview(thread);
@@ -579,8 +608,9 @@ class _ConversationList extends StatelessWidget {
       final ownerUid = (data['ownerUid'] ?? '').toString();
       if (ownerUid.isEmpty) continue;
       final ownerName = (data['ownerName'] as String?)?.trim();
-      final displayName =
-          (ownerName != null && ownerName.isNotEmpty) ? ownerName : _shortUid(ownerUid);
+      final displayName = (ownerName != null && ownerName.isNotEmpty)
+          ? ownerName
+          : _shortUid(ownerUid);
       final title = (data['title'] as String?)?.trim();
       final body = (data['body'] as String?)?.trim() ?? '';
       final created = data['createdAt'] as Timestamp?;
@@ -601,8 +631,8 @@ class _ConversationList extends StatelessWidget {
         );
       } else {
         final additionalUnread = isUnread ? 1 : 0;
-        map[ownerUid] =
-            existing.copyWith(unreadCount: existing.unreadCount + additionalUnread);
+        map[ownerUid] = existing.copyWith(
+            unreadCount: existing.unreadCount + additionalUnread);
       }
     }
 
@@ -750,14 +780,14 @@ class _ConversationSheetState extends State<_ConversationSheet> {
     super.dispose();
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> get _stream => FirebaseFirestore
-      .instance
-      .collection('clinic_inbox')
-      .doc(widget.clinicId)
-      .collection('messages')
-      .where('ownerUid', isEqualTo: widget.owner.uid)
-      .orderBy('createdAt')
-      .snapshots();
+  Stream<QuerySnapshot<Map<String, dynamic>>> get _stream =>
+      FirebaseFirestore.instance
+          .collection('clinic_inbox')
+          .doc(widget.clinicId)
+          .collection('messages')
+          .where('ownerUid', isEqualTo: widget.owner.uid)
+          .orderBy('createdAt')
+          .snapshots();
 
   Future<void> _send() async {
     final text = _messageCtrl.text.trim();
@@ -829,13 +859,13 @@ class _ConversationSheetState extends State<_ConversationSheet> {
       }
       await batch.commit();
     } catch (_) {
-      // ignore
     } finally {
       _markingRead = false;
     }
   }
 
-  bool _focusTargetMessage(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+  bool _focusTargetMessage(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
     final targetId = widget.focusMessageId;
     if (_focusHandled || targetId == null || targetId.isEmpty) return false;
     final exists = docs.any((d) => d.id == targetId);
@@ -916,13 +946,14 @@ class _ConversationSheetState extends State<_ConversationSheet> {
 
                 return ListView.builder(
                   controller: _scrollCtrl,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final doc = docs[index];
                     final data = doc.data();
-                    final key = _messageKeys.putIfAbsent(doc.id, () => GlobalKey());
+                    final key =
+                        _messageKeys.putIfAbsent(doc.id, () => GlobalKey());
                     final fromStaff =
                         (data['fromStaffUid'] as String?)?.isNotEmpty == true;
                     final fromOwner =
@@ -934,11 +965,11 @@ class _ConversationSheetState extends State<_ConversationSheet> {
                     final bubbleColor = isOwner
                         ? cs.surfaceContainerHighest
                         : cs.primaryContainer;
-                    final alignment = isOwner
-                        ? Alignment.centerLeft
-                        : Alignment.centerRight;
-                    final textAlign =
-                        isOwner ? CrossAxisAlignment.start : CrossAxisAlignment.end;
+                    final alignment =
+                        isOwner ? Alignment.centerLeft : Alignment.centerRight;
+                    final textAlign = isOwner
+                        ? CrossAxisAlignment.start
+                        : CrossAxisAlignment.end;
 
                     return Align(
                       key: key,

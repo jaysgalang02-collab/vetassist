@@ -13,11 +13,12 @@ class PetProfileTab extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete pet'),
         content: const Text(
-          'This will permanently remove the pet and its related visits, vaccines, '
-          'and reminders. This action cannot be undone.'
-        ),
+            'This will permanently remove the pet and its related visits, vaccines, '
+            'and reminders. This action cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           FilledButton.tonal(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
@@ -30,9 +31,11 @@ class PetProfileTab extends StatelessWidget {
     final db = FirebaseFirestore.instance;
     final batch = db.batch();
 
-    // cascade delete related docs
     for (final col in ['visits', 'vaccines', 'reminders']) {
-      final q = await db.collection(col).where('patientId', isEqualTo: patientId).get();
+      final q = await db
+          .collection(col)
+          .where('patientId', isEqualTo: patientId)
+          .get();
       for (final d in q.docs) {
         batch.delete(d.reference);
       }
@@ -41,15 +44,17 @@ class PetProfileTab extends StatelessWidget {
     await batch.commit();
 
     if (context.mounted) {
-      Navigator.pop(context); // pop PetDetail screen
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pet deleted')));
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Pet deleted')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final ref = FirebaseFirestore.instance.collection('patients').doc(patientId);
+    final ref =
+        FirebaseFirestore.instance.collection('patients').doc(patientId);
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: ref.snapshots(),
@@ -74,18 +79,18 @@ class PetProfileTab extends StatelessWidget {
           _ProfileRow('Breed', _s('breed')),
           _ProfileRow('Sex', _s('sex')),
           _ProfileRow('Color/Markings', _s('colorMarkings')),
-          _ProfileRow('Weight', d['weightKg'] == null ? '—' : '${d['weightKg']} kg'),
+          _ProfileRow(
+              'Weight', d['weightKg'] == null ? '—' : '${d['weightKg']} kg'),
           _ProfileRow('Allergies', _s('allergies')),
           _ProfileRow('Notes', _s('notes')),
         ];
 
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          itemCount: rows.length + 1, // +1 actions
+          itemCount: rows.length + 1,
           separatorBuilder: (_, __) => const SizedBox(height: 8),
           itemBuilder: (_, i) {
             if (i == 0) {
-              // ACTIONS: Update / Delete
               return Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -97,11 +102,12 @@ class PetProfileTab extends StatelessWidget {
                     Expanded(
                       child: FilledButton.icon(
                         onPressed: () {
-                          // Push via constructor so edit mode always works
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) => PetFormScreen(editPatientId: patientId),
-                              settings: const RouteSettings(name: PetFormScreen.route),
+                              builder: (_) =>
+                                  PetFormScreen(editPatientId: patientId),
+                              settings: const RouteSettings(
+                                  name: PetFormScreen.route),
                             ),
                           );
                         },

@@ -16,7 +16,8 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
   final addrCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
   final hoursCtrl = TextEditingController(text: 'Mon–Sat 9:00–18:00');
-  final servicesCtrl = TextEditingController(text: 'Consultation, Vaccination, Grooming');
+  final servicesCtrl =
+      TextEditingController(text: 'Consultation, Vaccination, Grooming');
   bool busy = false;
 
   String _genCode() {
@@ -27,8 +28,11 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
 
   @override
   void dispose() {
-    nameCtrl.dispose(); addrCtrl.dispose(); phoneCtrl.dispose();
-    hoursCtrl.dispose(); servicesCtrl.dispose();
+    nameCtrl.dispose();
+    addrCtrl.dispose();
+    phoneCtrl.dispose();
+    hoursCtrl.dispose();
+    servicesCtrl.dispose();
     super.dispose();
   }
 
@@ -36,7 +40,8 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
     final user = FirebaseAuth.instance.currentUser;
     final uid = user?.uid;
     if (nameCtrl.text.trim().isEmpty) {
-      _toast('Enter clinic name'); return;
+      _toast('Enter clinic name');
+      return;
     }
     setState(() => busy = true);
     try {
@@ -51,7 +56,6 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Create an initial staff/invite code regardless of auth
       final code = _genCode();
       await FirebaseFirestore.instance.doc('staff_codes/$code').set({
         'clinicId': ref.id,
@@ -59,7 +63,6 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // link current staff user to this clinic
       if (uid != null) {
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
           'clinicId': ref.id,
@@ -81,7 +84,8 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
               const SizedBox(height: 8),
               SelectableText(
                 code,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
               ),
             ],
           ),
@@ -121,8 +125,11 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
           FilledButton(
             onPressed: busy ? null : _save,
             child: busy
-                ? const SizedBox(width: 18, height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
                 : const Text('Save clinic'),
           )
         ],
@@ -130,7 +137,8 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
     );
   }
 
-  Widget _f(String label, TextEditingController c, {int maxLines = 1, TextInputType? kb}) {
+  Widget _f(String label, TextEditingController c,
+      {int maxLines = 1, TextInputType? kb}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextField(

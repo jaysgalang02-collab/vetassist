@@ -2,14 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-/// Customer view — shows reminders that belong to the
-/// current customer's pets (patients the user owns).
-///
-/// Your `reminders` docs (per screenshots) look like:
-/// { clinicId, createdAt, dueAt, patientId, title, type, uid, updatedAt, when }
-/// Note: `uid` is the STAFF who created the reminder. There is NO `ownerUid`
-/// in reminders. So we must first get the customer’s patient IDs, then query
-/// reminders where `patientId` is in those IDs.
 class RemindersScreen extends StatefulWidget {
   static const route = '/reminders';
   const RemindersScreen({super.key});
@@ -19,13 +11,10 @@ class RemindersScreen extends StatefulWidget {
 }
 
 class _RemindersScreenState extends State<RemindersScreen> {
-  /// 0 = Upcoming, 1 = Past
   int _tab = 0;
 
-  /// Cache patientId -> patient (to display pet name/species)
   final Map<String, Map<String, dynamic>?> _patientCache = {};
 
-  /// Pull-to-refresh
   final GlobalKey<RefreshIndicatorState> _refreshKey =
       GlobalKey<RefreshIndicatorState>();
 
@@ -87,7 +76,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
               return const _EmptyView();
             }
 
-            final batches = _chunk(patientIds, 10); // Firestore whereIn limit
+            final batches = _chunk(patientIds, 10);
             return ListView.builder(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
               itemCount: batches.length,
@@ -131,21 +120,22 @@ class _RemindersScreenState extends State<RemindersScreen> {
                         .map((d) => _ReminderRow.fromDoc(d.id, d.data()))
                         .toList()
                       ..sort((a, b) {
-                        final ad = a.dueAt ??
-                            DateTime.fromMillisecondsSinceEpoch(0);
-                        final bd = b.dueAt ??
-                            DateTime.fromMillisecondsSinceEpoch(0);
+                        final ad =
+                            a.dueAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                        final bd =
+                            b.dueAt ?? DateTime.fromMillisecondsSinceEpoch(0);
                         return ad.compareTo(bd);
                       });
 
                     final now = DateTime.now();
                     final upcoming = rows
                         .where((r) =>
-                            (r.dueAt ?? now).isAfter(now) || _sameDay(r.dueAt, now))
+                            (r.dueAt ?? now).isAfter(now) ||
+                            _sameDay(r.dueAt, now))
                         .toList();
                     final past = rows
-                        .where((r) =>
-                            (r.dueAt ?? now).isBefore(_startOfDay(now)))
+                        .where(
+                            (r) => (r.dueAt ?? now).isBefore(_startOfDay(now)))
                         .toList();
 
                     final show = _tab == 0 ? upcoming : past;
@@ -173,8 +163,6 @@ class _RemindersScreenState extends State<RemindersScreen> {
       ),
     );
   }
-
-  // ---------- data helpers ----------
 
   Future<List<String>> _loadMyPatientIds(String ownerUid) async {
     final q = await FirebaseFirestore.instance
@@ -244,7 +232,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
                 _FactRow(label: 'Title', value: r.title ?? '—'),
                 _FactRow(label: 'Type', value: r.type ?? '—'),
                 _FactRow(
-                    label: 'Due', value: r.dueAt == null ? '—' : _fmt(r.dueAt!)),
+                    label: 'Due',
+                    value: r.dueAt == null ? '—' : _fmt(r.dueAt!)),
                 const SizedBox(height: 10),
                 _FactRow(
                   label: 'Patient',
@@ -265,8 +254,6 @@ class _RemindersScreenState extends State<RemindersScreen> {
     );
   }
 }
-
-// ===================== models & UI =====================
 
 class _ReminderRow {
   final String id;
@@ -292,7 +279,7 @@ class _ReminderRow {
       : '${patientId.substring(0, 4)}…${patientId.substring(patientId.length - 4)}';
 
   static _ReminderRow fromDoc(String id, Map<String, dynamic> m) {
-    final due = _toDate(m['dueAt']) ?? _toDate(m['when']); // legacy support
+    final due = _toDate(m['dueAt']) ?? _toDate(m['when']);
     return _ReminderRow(
       id: id,
       clinicId: (m['clinicId'] ?? '').toString(),
@@ -434,8 +421,7 @@ class _Segmented extends StatelessWidget {
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(i == 0 ? 12 : 0),
                   bottomLeft: Radius.circular(i == 0 ? 12 : 0),
-                  topRight:
-                      Radius.circular(i == segments.length - 1 ? 12 : 0),
+                  topRight: Radius.circular(i == segments.length - 1 ? 12 : 0),
                   bottomRight:
                       Radius.circular(i == segments.length - 1 ? 12 : 0),
                 ),
@@ -537,8 +523,6 @@ class _FactRow extends StatelessWidget {
     );
   }
 }
-
-// ---------- tiny date util ----------
 
 String _fmt(DateTime d) =>
     '${d.year}-${_p2(d.month)}-${_p2(d.day)} ${_p2(d.hour)}:${_p2(d.minute)}';

@@ -1,268 +1,151 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/brand_widgets.dart';
 import 'login_screen.dart';
 import 'create_account_screen.dart';
 import 'admin/admin_login_screen.dart';
 
-class PortalPicker extends StatefulWidget {
+class PortalPicker extends StatelessWidget {
   static const route = '/portal';
   const PortalPicker({super.key});
 
   @override
-  State<PortalPicker> createState() => _PortalPickerState();
-}
-
-class _PortalPickerState extends State<PortalPicker> {
-  static const _logoAsset = 'lib/assets/logo.png';
-  int _secretTap = 0;
-
-  void _triggerAdminAccess() {
-    _secretTap++;
-    if (_secretTap >= 5) {
-      _secretTap = 0;
-      Navigator.pushNamed(context, AdminLoginScreen.route);
-    } else {
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) _secretTap = 0;
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    Widget tile({
-      required IconData leading,
-      required String title,
-      required String subtitle,
-      required IconData trailing,
-      required VoidCallback onTap,
-      Color? tint,
-    }) {
-      return InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  color: (tint ?? cs.primary).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(leading, color: tint ?? cs.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text(subtitle, style: TextStyle(color: cs.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              Icon(trailing, color: cs.onSurfaceVariant),
-            ],
-          ),
-        ),
-      );
-    }
-
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Choose Portal'),
+        title: const Text('VetAssist'),
         actions: [
           IconButton(
-            tooltip: 'Support',
-            onPressed: () => Navigator.pushNamed(context, AdminLoginScreen.route),
-            icon: Icon(Icons.admin_panel_settings_outlined, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
+            tooltip: 'Administrator sign in',
+            onPressed: () =>
+                Navigator.pushNamed(context, AdminLoginScreen.route),
+            icon: const Icon(Icons.admin_panel_settings_outlined),
           ),
+          const SizedBox(width: 8),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.asset(
-                    _logoAsset,
-                    width: 64,
-                    height: 64,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: cs.primaryContainer,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(Icons.pets_rounded, color: cs.primary),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
+      body: SafeArea(
+        child: ContentFrame(
+          maxWidth: 1040,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            child: LayoutBuilder(builder: (context, constraints) {
+              final intro = Entrance(
+                child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const BrandLogo(size: 64),
+                      const SizedBox(height: 18),
+                      Text('A little care.\nA happier companion.',
+                          style: theme.textTheme.headlineMedium),
+                      const SizedBox(height: 12),
                       Text(
-                        'VetAssist',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: cs.onSurface,
-                          fontSize: 18,
-                        ),
+                          'Keep your pet\'s care close. Connect with your clinic, plan a visit, and stay on top of the little things.',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant)),
+                    ]),
+              );
+              final choices = Entrance(
+                milliseconds: 560,
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('How will you use VetAssist?',
+                          style: theme.textTheme.titleLarge),
+                      const SizedBox(height: 6),
+                      Text('Choose your space to get started.',
+                          style: TextStyle(
+                              color: theme.colorScheme.onSurfaceVariant)),
+                      const SizedBox(height: 14),
+                      PortalAction(
+                        title: 'Pet owner',
+                        subtitle:
+                            'Book visits, view records, and message your clinic.',
+                        icon: Icons.pets_rounded,
+                        onTap: () => Navigator.pushNamed(
+                            context, CustomerLoginScreen.route),
                       ),
-                      const SizedBox(height: 2),
+                      PortalAction(
+                        title: 'Staff / Vet',
+                        subtitle:
+                            'Manage patients, appointments, and conversations.',
+                        icon: Icons.medical_services_outlined,
+                        onTap: () => Navigator.pushNamed(
+                            context, StaffLoginScreen.route),
+                      ),
+                      const SizedBox(height: 18),
+                      FilledButton.icon(
+                        onPressed: () => Navigator.pushNamed(
+                            context, CreateAccountScreen.route,
+                            arguments: 'customer'),
+                        icon: const Icon(Icons.person_add_alt_1_rounded),
+                        label: const Text('Create a pet owner account',
+                            textAlign: TextAlign.center),
+                      ),
+                      const SizedBox(height: 12),
                       Text(
-                        'One app for pet owners and clinics',
-                        style: TextStyle(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+                          'Already registered? Select your portal above to sign in.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant)),
+                      const SizedBox(height: 24),
+                      Wrap(spacing: 8, runSpacing: 8, children: const [
+                        _Benefit(
+                            icon: Icons.calendar_month_outlined,
+                            label: 'Easy booking'),
+                        _Benefit(
+                            icon: Icons.chat_bubble_outline_rounded,
+                            label: 'Clinic chat'),
+                        _Benefit(
+                            icon: Icons.favorite_border_rounded,
+                            label: 'Care reminders'),
+                      ]),
+                    ]),
+              );
+              if (constraints.maxWidth >= 800) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: intro),
+                        const SizedBox(width: 64),
+                        Expanded(child: choices),
+                      ]),
+                );
+              }
+              return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [intro, const SizedBox(height: 32), choices]);
+            }),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              gradient: LinearGradient(
-                colors: [
-                  cs.primaryContainer.withValues(alpha: 0.85),
-                  cs.secondaryContainer.withValues(alpha: 0.75),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Why use VetAssist?',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: cs.onPrimaryContainer,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Faster pet care, clearer communication, and organized records in one app.',
-                  style: TextStyle(
-                    color: cs.onPrimaryContainer.withValues(alpha: 0.92),
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _PromoBullet(
-                  text: 'Book visits, track reminders, and chat with your clinic anytime.',
-                  color: cs.onPrimaryContainer,
-                ),
-                _PromoBullet(
-                  text: 'For staff: manage appointments, patient records, and customer messages in one workflow.',
-                  color: cs.onPrimaryContainer,
-                ),
-                _PromoBullet(
-                  text: 'Real-time notifications so you never miss important updates.',
-                  color: cs.onPrimaryContainer,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          tile(
-            leading: Icons.play_arrow_rounded,
-            title: 'Customer',
-            subtitle: 'Pet owner portal',
-            trailing: Icons.pets_outlined,
-            onTap: () => Navigator.pushNamed(context, CustomerLoginScreen.route),
-          ),
-          tile(
-            leading: Icons.play_arrow_rounded,
-            title: 'Staff / Vet',
-            subtitle: 'Clinic portal',
-            trailing: Icons.badge_outlined,
-            onTap: () => Navigator.pushNamed(context, StaffLoginScreen.route),
-          ),
-          const SizedBox(height: 24),
-          Center(
-            child: Column(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pushNamed(
-                    context,
-                    CreateAccountScreen.route,
-                    arguments: 'customer',
-                  ),
-                  child: const Text('Create a new account'),
-                ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: _triggerAdminAccess,
-                  child: Text(
-                    'Need elevated support?',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _PromoBullet extends StatelessWidget {
-  final String text;
-  final Color color;
-  const _PromoBullet({required this.text, required this.color});
+class _Benefit extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _Benefit({required this.icon, required this.label});
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.check_circle_rounded, size: 16, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(color: color),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(30)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 6),
+          Flexible(
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary))),
+        ]),
+      );
 }

@@ -15,16 +15,16 @@ class PetFormScreen extends StatefulWidget {
 class _PetFormScreenState extends State<PetFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final _nameCtrl   = TextEditingController();
-  final _breedCtrl  = TextEditingController();
-  final _notesCtrl  = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _breedCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
 
-  String _species = 'canine'; // canine | feline
-  String _sex     = 'male';   // male | female
-  bool   _busy    = false;
+  String _species = 'canine';
+  String _sex = 'male';
+  bool _busy = false;
 
-  String? _clinicId;   // loaded from users/{uid}
-  String? _clinicName; // optional convenience
+  String? _clinicId;
+  String? _clinicName;
 
   @override
   void initState() {
@@ -44,26 +44,24 @@ class _PetFormScreenState extends State<PetFormScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     try {
-      final me = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final me =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (me.exists) {
         final data = me.data() as Map<String, dynamic>;
         setState(() {
-          _clinicId   = data['clinicId'] as String?;
+          _clinicId = data['clinicId'] as String?;
           _clinicName = (data['clinicName'] as String?) ?? 'Your Clinic';
         });
       }
-    } catch (_) {
-      // non-fatal; will be handled on submit if null
-    }
+    } catch (_) {}
   }
 
   Future<void> _submit() async {
-    // 1) Validate form fields
     if (!_formKey.currentState!.validate()) return;
 
-    // 2) Ensure we have a clinicId to attach
     if (_clinicId == null || _clinicId!.isEmpty) {
-      toast(context, 'No clinic selected in your profile. Please choose a clinic first.');
+      toast(context,
+          'No clinic selected in your profile. Please choose a clinic first.');
       return;
     }
 
@@ -75,22 +73,17 @@ class _PetFormScreenState extends State<PetFormScreen> {
 
     setState(() => _busy = true);
     try {
-      // 3) Build the document with required fields for rules:
-      //    - ownerUid == auth.uid
-      //    - species in ['canine', 'feline']
-      //    - name is string
-      //    - clinicId attached
       final doc = <String, dynamic>{
-        'ownerUid'  : uid,
-        'clinicId'  : _clinicId,
-        'clinicName': _clinicName, // convenience; optional
-        'name'      : _nameCtrl.text.trim(),
-        'species'   : _species, // canine | feline
-        'breed'     : _breedCtrl.text.trim(),
-        'sex'       : _sex,     // male | female
-        'notes'     : _notesCtrl.text.trim(),
-        'createdAt' : FieldValue.serverTimestamp(),
-        'updatedAt' : FieldValue.serverTimestamp(),
+        'ownerUid': uid,
+        'clinicId': _clinicId,
+        'clinicName': _clinicName,
+        'name': _nameCtrl.text.trim(),
+        'species': _species,
+        'breed': _breedCtrl.text.trim(),
+        'sex': _sex,
+        'notes': _notesCtrl.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       };
 
       await FirebaseFirestore.instance.collection('patients').add(doc);
@@ -101,7 +94,8 @@ class _PetFormScreenState extends State<PetFormScreen> {
       }
     } on FirebaseException catch (e) {
       if (e.code == 'permission-denied') {
-        toast(context, 'Permission denied by rules. Make sure you are signed in and ownerUid matches.');
+        toast(context,
+            'Permission denied by rules. Make sure you are signed in and ownerUid matches.');
       } else {
         toast(context, 'Failed to save: ${e.message}');
       }
@@ -133,20 +127,21 @@ class _PetFormScreenState extends State<PetFormScreen> {
                     Flexible(
                       child: Text(
                         _clinicName ?? 'Your Clinic',
-                        style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            color: cs.primary, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
                 ),
               ),
-
             TextFormField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Pet name', hintText: 'e.g., Bella'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter pet name' : null,
+              decoration: const InputDecoration(
+                  labelText: 'Pet name', hintText: 'e.g., Bella'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Enter pet name' : null,
             ),
             const SizedBox(height: 10),
-
             DropdownButtonFormField<String>(
               value: _species,
               items: const [
@@ -157,13 +152,11 @@ class _PetFormScreenState extends State<PetFormScreen> {
               decoration: const InputDecoration(labelText: 'Species'),
             ),
             const SizedBox(height: 10),
-
             TextFormField(
               controller: _breedCtrl,
               decoration: const InputDecoration(labelText: 'Breed (optional)'),
             ),
             const SizedBox(height: 10),
-
             DropdownButtonFormField<String>(
               value: _sex,
               items: const [
@@ -174,7 +167,6 @@ class _PetFormScreenState extends State<PetFormScreen> {
               decoration: const InputDecoration(labelText: 'Sex'),
             ),
             const SizedBox(height: 10),
-
             TextFormField(
               controller: _notesCtrl,
               minLines: 2,
@@ -182,12 +174,14 @@ class _PetFormScreenState extends State<PetFormScreen> {
               decoration: const InputDecoration(labelText: 'Notes (optional)'),
             ),
             const SizedBox(height: 16),
-
             FilledButton.icon(
               onPressed: _busy ? null : _submit,
               icon: _busy
                   ? const SizedBox(
-                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.check),
               label: const Text('Save pet'),
             ),

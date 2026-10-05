@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../services/openai_service.dart';
+import '../../../services/local_cdss_service.dart';
+import '../../../services/symptom_engine.dart';
 import '../../../widgets/cdss_chat_box.dart';
+import '../clinical_reference_screen.dart';
 
 class CdsTab extends StatefulWidget {
   const CdsTab({super.key});
@@ -15,12 +17,10 @@ class CdsTab extends StatefulWidget {
 class _CdsTabState extends State<CdsTab> {
   String species = 'canine';
 
-  // Photo & AI analysis state
   File? _photo;
   bool _loadingVision = false;
-  Map<String, dynamic>? _ai; // parsed JSON from OpenAI (see service)
+  Map<String, dynamic>? _ai;
 
-  // Your existing symptom model
   final Map<String, bool> symptoms = {
     'fever': false,
     'vomiting': false,
@@ -36,107 +36,47 @@ class _CdsTabState extends State<CdsTab> {
     'neurologic_signs': false,
   };
 
-  // Knowledge/rule base (kept from your file, can be extended anytime)
-  final Map<String, Map<String, dynamic>> rulebase = {
-    // DOGS
-    'parvovirus': {
-      'species': 'canine',
-      'symptoms': ['vomiting', 'diarrhea', 'lethargy', 'loss_of_appetite', 'fever'],
-      'notes': 'Severe vomiting/diarrhea (may be bloody). Test: fecal ELISA. Supportive therapy + antibiotics.',
-    },
-    'distemper': {
-      'species': 'canine',
-      'symptoms': ['cough', 'nasal_discharge', 'ocular_discharge', 'fever', 'neurologic_signs'],
-      'notes': 'Respiratory + neuro signs. Test: RT-PCR/serology. Supportive care.',
-    },
-    'heartworm': {
-      'species': 'canine',
-      'symptoms': ['cough', 'respiratory_distress', 'lethargy', 'weight_loss'],
-      'notes': 'Consider antigen test; stage before treatment. Exercise restriction.',
-    },
+  SymptomEngine _engine = SymptomEngine();
 
-    // CATS
-    'feline_leukemia': {
-      'species': 'feline',
-      'symptoms': ['lethargy', 'weight_loss', 'fever', 'pale_gums'],
-      'notes': 'Test: FeLV antigen. Manage secondary infections.',
-    },
-    'fiv': {
-      'species': 'feline',
-      'symptoms': ['weight_loss', 'fever', 'lethargy'],
-      'notes': 'Test: FIV antibody. Supportive care; manage co-infections.',
-    },
-    'feline_uri': {
-      'species': 'feline',
-      'symptoms': ['cough', 'nasal_discharge', 'ocular_discharge', 'fever', 'loss_of_appetite'],
-      'notes': 'Supportive care; consider antivirals/antibiotics if indicated.',
-    },
-  };
-
-  // ===== Helpers =====
-
-  List<_CdsSuggestion> _computeSuggestions() {
-    final selected = symptoms.entries.where((e) => e.value).map((e) => e.key).toSet();
-
-    final List<_CdsSuggestion> out = [];
-    rulebase.forEach((disease, meta) {
-      if (meta['species'] != species) return;
-      final need = (meta['symptoms'] as List).cast<String>().toSet();
-      if (need.isEmpty) return;
-      final matched = need.intersection(selected).length;
-      final score = matched / need.length; // 0.0 - 1.0
-      if (matched > 0) {
-        out.add(_CdsSuggestion(
-          disease: disease.replaceAll('_', ' ').toUpperCase(),
-          score: score,
-          notes: meta['notes'] as String,
-          matched: matched,
-          total: need.length,
-          source: 'Rules',
-        ));
-      }
-    });
-
-    // If AI returned differentials, fuse them here.
-    final aiDiffs = _ai?['differentials'];
-    if (aiDiffs is List) {
-      for (final d in aiDiffs) {
-        final name = (d['name'] ?? '').toString();
-        if (name.isEmpty) continue;
-        final conf = (d['confidence'] is num) ? (d['confidence'] as num).toDouble() : 0.0;
-        final rationale = (d['rationale'] ?? '').toString();
-
-        // If a rules suggestion has the same disease name, blend by taking max score.
-        final idx = out.indexWhere((s) => s.disease.toLowerCase() == name.toString().toLowerCase());
-        if (idx >= 0) {
-          final merged = out[idx];
-          out[idx] = merged.copyWith(
-            score: merged.score > conf ? merged.score : conf,
-            notes: '${merged.notes}\n\nAI: $rationale',
-            source: 'Rules+AI',
-          );
-        } else {
-          out.add(_CdsSuggestion(
-            disease: _title(name),
-            score: conf.clamp(0.0, 1.0),
-            notes: 'AI: $rationale',
-            matched: 0,
-            total: 0,
-            source: 'AI',
-          ));
-        }
-      }
-    }
-
-    out.sort((a, b) => b.score.compareTo(a.score));
-    return out;
+  @override
+  void initState() {
+    super.initState();
+    _loadModel();
   }
 
-  String _title(String s) => s.isEmpty ? s : (s[0].toUpperCase() + s.substring(1));
+  Future<void> _loadModel() async {
+    try {
+      final engine = await loadSymptomEngine();
+      if (mounted) setState(() => _engine = engine);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text(
+            'The disease model could not be loaded. Symptom rules remain available.'),
+      ));
+    }
+  }
+
+  List<_CdsSuggestion> _computeSuggestions() {
+    final selected =
+        symptoms.entries.where((e) => e.value).map((e) => e.key).toSet();
+    return _engine
+        .predict(species, selected)
+        .map((s) => _CdsSuggestion(
+              disease: s.disease.replaceAll('_', ' ').toUpperCase(),
+              score: s.score,
+              notes: s.notes,
+              matched: s.matched,
+              total: s.total,
+              source: s.source,
+            ))
+        .toList();
+  }
 
   Future<void> _pickAndAnalyze(ImageSource src) async {
     final picker = ImagePicker();
-    final x = await picker.pickImage(source: src, imageQuality: 92, maxWidth: 1800);
+    final x =
+        await picker.pickImage(source: src, imageQuality: 92, maxWidth: 1800);
     if (x == null) return;
     setState(() {
       _photo = File(x.path);
@@ -145,18 +85,18 @@ class _CdsTabState extends State<CdsTab> {
     });
 
     try {
-      final result = await OpenAiVisionService().analyzePetImage(
+      final result = await LocalPetPhotoService().analyzePetImage(
         file: _photo!,
-        speciesHint: species, // we constrain to dog/cat
+        speciesHint: species,
       );
       setState(() {
         _ai = result;
       });
 
-      // Optionally auto-toggle symptoms inferred by AI
       final inferred = (_ai?['inferred_symptoms'] ?? []) as List;
       for (final key in symptoms.keys) {
-        final hit = inferred.any((i) => i.toString().toLowerCase() == key.toLowerCase());
+        final hit = inferred
+            .any((i) => i.toString().toLowerCase() == key.toLowerCase());
         if (hit) symptoms[key] = true;
       }
     } catch (e) {
@@ -198,8 +138,6 @@ class _CdsTabState extends State<CdsTab> {
     );
   }
 
-  // ===== UI =====
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -209,7 +147,17 @@ class _CdsTabState extends State<CdsTab> {
       padding: const EdgeInsets.all(12),
       child: ListView(
         children: [
-          // species selector + analyze button in one row
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.library_books_outlined),
+              title: const Text('Published clinical cases'),
+              subtitle: const Text(
+                  'Browse sourced urogenital case records. Reference examples, separate from symptom predictions.'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => const ClinicalReferenceScreen())),
+            ),
+          ),
           Wrap(
             spacing: 12,
             runSpacing: 8,
@@ -222,24 +170,28 @@ class _CdsTabState extends State<CdsTab> {
                   ButtonSegment(value: 'feline', label: Text('Cat')),
                 ],
                 selected: {species},
-                onSelectionChanged: (s) => setState(() => species = s.first),
+                onSelectionChanged: (s) => setState(() {
+                  species = s.first;
+                  _ai = null;
+                  for (final key in symptoms.keys) {
+                    symptoms[key] = false;
+                  }
+                }),
               ),
               FilledButton.icon(
                 onPressed: _loadingVision ? null : _showImagePickerSheet,
                 icon: const Icon(Icons.camera_alt_rounded, size: 18),
-                label: const Text('Analyze Photo'),
+                label: const Text('Attach Photo'),
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // Photo preview + AI summary
           if (_photo != null || _loadingVision || _ai != null)
             Card(
               elevation: 0,
               color: cs.surfaceContainerHighest,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
@@ -248,45 +200,59 @@ class _CdsTabState extends State<CdsTab> {
                     if (_photo != null)
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(_photo!, height: 180, fit: BoxFit.cover, width: double.infinity),
+                        child: Image.file(_photo!,
+                            height: 180,
+                            fit: BoxFit.cover,
+                            width: double.infinity),
                       ),
                     if (_loadingVision) ...[
                       const SizedBox(height: 12),
                       const LinearProgressIndicator(),
                       const SizedBox(height: 8),
-                      const Text('Analyzing photo…'),
+                      const Text('Attaching photo…'),
                     ],
                     if (!_loadingVision && _ai != null) ...[
                       const SizedBox(height: 12),
-                      Text('AI Findings', style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary)),
+                      Text('Photo attachment',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, color: cs.primary)),
                       const SizedBox(height: 6),
                       if ((_ai!['findings'] as List?)?.isNotEmpty == true)
                         Wrap(
                           spacing: 8,
                           runSpacing: -8,
-                          children: (_ai!['findings'] as List).map((f) => Chip(label: Text(f.toString()))).toList(),
+                          children: (_ai!['findings'] as List)
+                              .map((f) => Chip(label: Text(f.toString())))
+                              .toList(),
                         ),
                       if ((_ai!['red_flags'] as List?)?.isNotEmpty == true) ...[
                         const SizedBox(height: 8),
-                        Text('Red flags', style: TextStyle(fontWeight: FontWeight.w600, color: cs.error)),
+                        Text('Red flags',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, color: cs.error)),
                         const SizedBox(height: 4),
                         ...(_ai!['red_flags'] as List).map((e) => Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.warning_amber_rounded, color: cs.error, size: 16),
+                                Icon(Icons.warning_amber_rounded,
+                                    color: cs.error, size: 16),
                                 const SizedBox(width: 6),
                                 Expanded(child: Text(e.toString())),
                               ],
                             )),
                       ],
-                      if ((_ai!['suggested_tests'] as List?)?.isNotEmpty == true) ...[
+                      if ((_ai!['suggested_tests'] as List?)?.isNotEmpty ==
+                          true) ...[
                         const SizedBox(height: 8),
-                        const Text('Suggested tests', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Text('Suggested tests',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
                         Wrap(
                           spacing: 8,
                           runSpacing: -8,
-                          children: (_ai!['suggested_tests'] as List).map((f) => Chip(label: Text(f.toString()))).toList(),
+                          children: (_ai!['suggested_tests'] as List)
+                              .map((f) => Chip(label: Text(f.toString())))
+                              .toList(),
                         ),
                       ],
                     ],
@@ -294,11 +260,9 @@ class _CdsTabState extends State<CdsTab> {
                 ),
               ),
             ),
-
           const SizedBox(height: 10),
-
-          // Manual symptom selection
-          Text('Select symptoms', style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary)),
+          Text('Select symptoms',
+              style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 8,
@@ -313,18 +277,16 @@ class _CdsTabState extends State<CdsTab> {
               );
             }).toList(),
           ),
-
           const SizedBox(height: 14),
-
-          // Suggestions (Rules + AI fused)
           Builder(builder: (context) {
             if (sugg.isEmpty) {
-              return const Text('No suggestions yet. Select symptoms or analyze a photo.');
+              return const Text('No suggestions yet. Select symptoms.');
             }
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Suggestions', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('Suggestions',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 ...sugg.map((s) => Card(
                       child: ListTile(
@@ -334,9 +296,10 @@ class _CdsTabState extends State<CdsTab> {
                         title: Text(s.disease),
                         subtitle: Text(
                           ([
-                            if (s.matched > 0 && s.total > 0) 'Matched ${s.matched}/${s.total}',
+                            if (s.matched > 0 && s.total > 0)
+                              'Matched ${s.matched}/${s.total}',
                             s.source
-                          ]..removeWhere((x) => x == null || (x is String && x.isEmpty)))
+                          ]..removeWhere((x) => x.isEmpty))
                               .join(' • '),
                         ),
                         isThreeLine: true,
@@ -353,7 +316,10 @@ class _CdsTabState extends State<CdsTab> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(s.disease, style: Theme.of(context).textTheme.titleLarge),
+                                    Text(s.disease,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge),
                                     const SizedBox(height: 8),
                                     Text(s.notes),
                                     const SizedBox(height: 12),
@@ -361,7 +327,9 @@ class _CdsTabState extends State<CdsTab> {
                                       'First Aid',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w700,
-                                        color: Theme.of(context).colorScheme.primary,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
                                       ),
                                     ),
                                     const SizedBox(height: 6),
@@ -378,8 +346,6 @@ class _CdsTabState extends State<CdsTab> {
             );
           }),
           const SizedBox(height: 24),
-
-          // CDSS Chat box (multi-turn with images)
           CDSSChatBox(species: species),
           const SizedBox(height: 8),
         ],
@@ -436,7 +402,9 @@ String _firstAidAdvice(String disease, String species) {
   if (d.contains('feline') && d.contains('uri')) {
     return 'Use a steamy bathroom or humidifier to ease congestion, gently clean eye/nose discharge, offer warmed aromatic food and fresh water. Vet visit if breathing is difficult, eyes swell, or the cat stops eating.';
   }
-  if (d.contains('fiv') || d.contains('feline leukemia') || d.contains('leukemia')) {
+  if (d.contains('fiv') ||
+      d.contains('feline leukemia') ||
+      d.contains('leukemia')) {
     return 'Keep indoors, reduce stress, ensure clean water and palatable food, monitor gums/breathing. Arrange vet follow-up to confirm diagnosis and manage infections.';
   }
   return 'Keep the ${species == 'canine' ? 'dog' : 'cat'} rested, hydrated with small frequent sips of water, and monitor breathing, appetite, and energy. Go to a vet immediately for hard breathing, pale/blue gums, persistent vomiting/diarrhea, or weakness.';

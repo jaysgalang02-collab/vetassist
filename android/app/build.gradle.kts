@@ -33,7 +33,7 @@ fun readKeystoreProp(name: String): String? {
 
 android {
     namespace = "com.cafecircuit.vetassist"
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -50,9 +50,9 @@ android {
         applicationId = "com.cafecircuit.vetassist"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23
-        targetSdk = 35
-        versionCode = 3
+        minSdk = 24
+        targetSdk = 36
+        versionCode = flutter.versionCode
         versionName = "1.2"
     }
 

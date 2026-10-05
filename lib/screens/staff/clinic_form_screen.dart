@@ -13,15 +13,15 @@ class ClinicFormScreen extends StatefulWidget {
 class _ClinicFormScreenState extends State<ClinicFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final _nameCtrl    = TextEditingController();
+  final _nameCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
-  final _phoneCtrl   = TextEditingController();
-  final _emailCtrl   = TextEditingController();
-  final _hoursCtrl   = TextEditingController();
-  final _servicesCtrl= TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _hoursCtrl = TextEditingController();
+  final _servicesCtrl = TextEditingController();
 
   bool _active = true;
-  bool _busy   = false;
+  bool _busy = false;
 
   @override
   void initState() {
@@ -43,17 +43,18 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
   Future<void> _loadIfExists() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    final doc = await FirebaseFirestore.instance.collection('clinics').doc(uid).get();
+    final doc =
+        await FirebaseFirestore.instance.collection('clinics').doc(uid).get();
     if (!doc.exists) return;
     final d = doc.data()!;
     setState(() {
-      _nameCtrl.text     = (d['name'] ?? '') as String;
-      _addressCtrl.text  = (d['address'] ?? '') as String;
-      _phoneCtrl.text    = (d['phone'] ?? '') as String;
-      _emailCtrl.text    = (d['email'] ?? '') as String;
-      _hoursCtrl.text    = (d['hours'] ?? '') as String;
+      _nameCtrl.text = (d['name'] ?? '') as String;
+      _addressCtrl.text = (d['address'] ?? '') as String;
+      _phoneCtrl.text = (d['phone'] ?? '') as String;
+      _emailCtrl.text = (d['email'] ?? '') as String;
+      _hoursCtrl.text = (d['hours'] ?? '') as String;
       _servicesCtrl.text = (d['services'] ?? '') as String;
-      _active            = (d['active'] ?? true) as bool;
+      _active = (d['active'] ?? true) as bool;
     });
   }
 
@@ -66,14 +67,14 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
     try {
       final now = FieldValue.serverTimestamp();
       await FirebaseFirestore.instance.collection('clinics').doc(uid).set({
-        'ownerUid' : uid,
-        'name'     : _nameCtrl.text.trim(),
-        'address'  : _addressCtrl.text.trim(),
-        'phone'    : _phoneCtrl.text.trim(),
-        'email'    : _emailCtrl.text.trim(),
-        'hours'    : _hoursCtrl.text.trim(),
-        'services' : _servicesCtrl.text.trim(),
-        'active'   : _active,
+        'ownerUid': uid,
+        'name': _nameCtrl.text.trim(),
+        'address': _addressCtrl.text.trim(),
+        'phone': _phoneCtrl.text.trim(),
+        'email': _emailCtrl.text.trim(),
+        'hours': _hoursCtrl.text.trim(),
+        'services': _servicesCtrl.text.trim(),
+        'active': _active,
         'updatedAt': now,
         'createdAt': now,
       }, SetOptions(merge: true));
@@ -107,7 +108,8 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
             TextFormField(
               controller: _nameCtrl,
               decoration: const InputDecoration(labelText: 'Clinic name'),
-              validator: (v) => v==null || v.trim().isEmpty ? 'Required' : null,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Required' : null,
             ),
             const SizedBox(height: 10),
             TextFormField(
@@ -129,13 +131,16 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
             const SizedBox(height: 10),
             TextFormField(
               controller: _hoursCtrl,
-              decoration: const InputDecoration(labelText: 'Hours (e.g., Mon–Sat, 9am–6pm)'),
+              decoration: const InputDecoration(
+                  labelText: 'Hours (e.g., Mon–Sat, 9am–6pm)'),
             ),
             const SizedBox(height: 10),
             TextFormField(
               controller: _servicesCtrl,
-              minLines: 2, maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Services (comma-separated)'),
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                  labelText: 'Services (comma-separated)'),
             ),
             const SizedBox(height: 12),
             SwitchListTile(
@@ -147,8 +152,11 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
             FilledButton.icon(
               onPressed: _busy ? null : _save,
               icon: _busy
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.save),
               label: const Text('Save clinic'),
             ),

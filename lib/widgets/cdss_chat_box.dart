@@ -3,12 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../services/openai_service.dart';
+import '../services/local_cdss_service.dart';
 
 class CDSSChatBox extends StatefulWidget {
-  final String species; // 'canine' or 'feline'
-  final bool firstAidOnly; // true for customer mode
-  const CDSSChatBox({super.key, required this.species, this.firstAidOnly = false});
+  final String species;
+  final bool firstAidOnly;
+  const CDSSChatBox(
+      {super.key, required this.species, this.firstAidOnly = false});
 
   @override
   State<CDSSChatBox> createState() => _CDSSChatBoxState();
@@ -29,9 +30,20 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
     _messages.add(VetChatMessage(
       role: 'assistant',
       text: widget.firstAidOnly
-          ? 'Hi! I\'m VetAssist, an AI agent for cats and dogs. Describe the symptoms and optionally add photos. I\'ll suggest the likely condition, First Aid, and when to see a vet.'
-          : 'Hi! I\'m VetAssist, an AI agent for cats and dogs. Describe symptoms and optionally add photos. I\'ll suggest likely conditions, treatment plan, and protocol',
+          ? 'Hi! I\'m VetAssist. Describe your pet\'s current symptoms for safe First Aid guidance and when to see a vet. Photos are attachments only.'
+          : 'Hi! I\'m VetAssist. Describe current symptoms for local decision support. Possible conditions require veterinary review. Photos are attachments only.',
     ));
+  }
+
+  @override
+  void didUpdateWidget(covariant CDSSChatBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.species != widget.species ||
+        oldWidget.firstAidOnly != widget.firstAidOnly) {
+      _messages.clear();
+      _pendingImages.clear();
+      _controller.clear();
+    }
   }
 
   @override
@@ -43,7 +55,8 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
 
   Future<void> _pickImage(ImageSource src) async {
     if (_pendingImages.length >= 3) return;
-    final x = await _picker.pickImage(source: src, imageQuality: 92, maxWidth: 1600);
+    final x =
+        await _picker.pickImage(source: src, imageQuality: 92, maxWidth: 1600);
     if (x == null) return;
     setState(() => _pendingImages.add(File(x.path)));
   }
@@ -79,7 +92,8 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
     final text = _controller.text.trim();
     if (text.isEmpty && _pendingImages.isEmpty) return;
 
-    final userMsg = VetChatMessage(role: 'user', text: text, images: List.of(_pendingImages));
+    final userMsg = VetChatMessage(
+        role: 'user', text: text, images: List.of(_pendingImages));
     setState(() {
       _messages.add(userMsg);
       _controller.clear();
@@ -88,11 +102,18 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
     });
 
     try {
-      final reply = await OpenAiVetChatService().sendChat(
+      final requestedSpecies = widget.species;
+      final requestedMode = widget.firstAidOnly;
+      final reply = await LocalVetChatService().sendChat(
         history: _messages,
         speciesHint: widget.species,
         firstAidOnly: widget.firstAidOnly,
       );
+      if (!mounted ||
+          requestedSpecies != widget.species ||
+          requestedMode != widget.firstAidOnly) {
+        return;
+      }
       setState(() {
         _messages.add(VetChatMessage(role: 'assistant', text: reply));
       });
@@ -129,7 +150,8 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
               children: [
                 const Icon(Icons.psychology_alt_outlined, size: 18),
                 const SizedBox(width: 6),
-                const Text('CDSS Chat', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text('CDSS Chat',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
                 const Spacer(),
                 Tooltip(
                   message: 'Attach image',
@@ -143,8 +165,8 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
             const SizedBox(height: 4),
             Text(
               widget.firstAidOnly
-                  ? 'Hi! I\'m VetAssist, an AI agent for cats and dogs. Describe the symptoms and optionally add photos. I\'ll suggest the likely condition, First Aid, and when to see a vet.'
-                  : 'Describe your ${widget.species == 'canine' ? 'dog' : 'cat'}\'s issue. Add photos of the pet, stool, vomit, eyes, or skin for better assessment.',
+                  ? 'Describe current symptoms for safe First Aid guidance. Each message is assessed separately. Photos are attachments only.'
+                  : 'Describe your ${widget.species == 'canine' ? 'dog' : 'cat'}\'s issue. Each message is assessed separately. Photos are attachments only.',
               style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
             ),
             const SizedBox(height: 8),
@@ -159,7 +181,8 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: Image.file(_pendingImages[i], width: 72, height: 72, fit: BoxFit.cover),
+                        child: Image.file(_pendingImages[i],
+                            width: 72, height: 72, fit: BoxFit.cover),
                       ),
                       Positioned(
                         top: 2,
@@ -167,14 +190,16 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
                         child: InkWell(
                           onTap: _sending
                               ? null
-                              : () => setState(() => _pendingImages.removeAt(i)),
+                              : () =>
+                                  setState(() => _pendingImages.removeAt(i)),
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.black54,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             padding: const EdgeInsets.all(2),
-                            child: const Icon(Icons.close, size: 16, color: Colors.white),
+                            child: const Icon(Icons.close,
+                                size: 16, color: Colors.white),
                           ),
                         ),
                       )
@@ -183,7 +208,6 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
                 ),
               ),
             if (_pendingImages.isNotEmpty) const SizedBox(height: 8),
-
             Container(
               constraints: const BoxConstraints(maxHeight: 280, minHeight: 160),
               decoration: BoxDecoration(
@@ -199,18 +223,22 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
                     final m = _messages[i];
                     final isUser = m.role == 'user';
                     return Align(
-                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment:
+                          isUser ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         padding: const EdgeInsets.all(10),
                         constraints: const BoxConstraints(maxWidth: 480),
                         decoration: BoxDecoration(
-                          color: isUser ? cs.primaryContainer : cs.surfaceContainerHighest,
+                          color: isUser
+                              ? cs.primaryContainer
+                              : cs.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(
-                          crossAxisAlignment:
-                              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                          crossAxisAlignment: isUser
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
                           children: [
                             if (m.images.isNotEmpty)
                               Wrap(
@@ -218,8 +246,12 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
                                 runSpacing: 6,
                                 children: m.images
                                     .map((f) => ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: Image.file(f, width: 84, height: 84, fit: BoxFit.cover),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          child: Image.file(f,
+                                              width: 84,
+                                              height: 84,
+                                              fit: BoxFit.cover),
                                         ))
                                     .toList(),
                               ),
@@ -253,7 +285,9 @@ class _CDSSChatBoxState extends State<CDSSChatBox> {
                   onPressed: _sending ? null : _send,
                   icon: _sending
                       ? const SizedBox(
-                          width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.send),
                   label: const Text('Send'),
                 )

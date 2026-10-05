@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Import the three tab widgets explicitly.
 import 'pet_profile_tab.dart' show PetProfileTab;
 import 'pet_visits_tab.dart' show PetVisitsTab;
 import 'pet_vaccines_tab.dart' show PetVaccinesTab;
@@ -44,7 +43,8 @@ class _PetDetailScreenState extends State<PetDetailScreen>
       );
     }
     final args = routeArgs;
-    final title = (args.name?.trim().isNotEmpty ?? false) ? args.name!.trim() : 'Pet';
+    final title =
+        (args.name?.trim().isNotEmpty ?? false) ? args.name!.trim() : 'Pet';
 
     return Scaffold(
       appBar: AppBar(

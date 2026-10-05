@@ -52,13 +52,12 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
         'phone': _phone.text.trim(),
         'email': _email.text.trim(),
         'hours': _hours.text.trim(),
-        'services': _services.text.trim(), // comma-separated
+        'services': _services.text.trim(),
         'active': true,
         'createdAt': now,
         'updatedAt': now,
       });
 
-      // Create an invite/staff code for first staff signup (works when rules allow public write)
       final code = _genCode();
       await FirebaseFirestore.instance.doc('staff_codes/$code').set({
         'clinicId': doc.id,
@@ -82,7 +81,8 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
               SelectableText(
                 code,
                 style: const TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -96,7 +96,7 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
         ),
       );
 
-      if (mounted) Navigator.pop(context); // back to PortalPicker
+      if (mounted) Navigator.pop(context);
     } on FirebaseException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -124,14 +124,16 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
               controller: _name,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(labelText: 'Clinic name'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Required' : null,
             ),
             const SizedBox(height: 10),
             TextFormField(
               controller: _address,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(labelText: 'Address'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Required' : null,
             ),
             const SizedBox(height: 10),
             TextFormField(
@@ -171,8 +173,10 @@ class _ClinicFormScreenState extends State<ClinicFormScreen> {
               onPressed: _busy ? null : _save,
               icon: _busy
                   ? const SizedBox(
-                      height: 18, width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : const Icon(Icons.save),
               label: const Text('Save clinic'),

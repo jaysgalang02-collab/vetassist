@@ -1,0 +1,137 @@
+[
+  {
+    "symptomId": "fever",
+    "displayName": "fever",
+    "aliases": [
+      "fever",
+      "lagnat"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "vomiting",
+    "displayName": "vomiting",
+    "aliases": [
+      "vomiting",
+      "vomit",
+      "throwing up",
+      "suka",
+      "sumusuka"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "diarrhea",
+    "displayName": "diarrhea",
+    "aliases": [
+      "diarrhea",
+      "diarrhoea",
+      "loose stool",
+      "pagtatae",
+      "nagtatae"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "cough",
+    "displayName": "cough",
+    "aliases": [
+      "cough",
+      "coughing",
+      "ubo",
+      "umuubo"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "nasal_discharge",
+    "displayName": "nasal discharge",
+    "aliases": [
+      "nasal discharge",
+      "runny nose",
+      "sipon"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "ocular_discharge",
+    "displayName": "ocular discharge",
+    "aliases": [
+      "ocular discharge",
+      "eye discharge",
+      "muta"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "lethargy",
+    "displayName": "lethargy",
+    "aliases": [
+      "lethargy",
+      "lethargic",
+      "weak",
+      "weakness",
+      "matamlay",
+      "panghihina"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "loss_of_appetite",
+    "displayName": "loss of appetite",
+    "aliases": [
+      "loss of appetite",
+      "not eating",
+      "no appetite",
+      "poor appetite",
+      "hindi kumakain",
+      "walang gana"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "weight_loss",
+    "displayName": "weight loss",
+    "aliases": [
+      "weight loss",
+      "losing weight",
+      "pumapayat"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "respiratory_distress",
+    "displayName": "respiratory distress",
+    "aliases": [
+      "respiratory distress",
+      "difficulty breathing",
+      "trouble breathing",
+      "hard breathing",
+      "hirap huminga"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "pale_gums",
+    "displayName": "pale gums",
+    "aliases": [
+      "pale gums",
+      "blue gums",
+      "maputlang gilagid"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  },
+  {
+    "symptomId": "neurologic_signs",
+    "displayName": "neurologic signs",
+    "aliases": [
+      "neurologic signs",
+      "seizure",
+      "seizures",
+      "convulsion",
+      "convulsions",
+      "twitching"
+    ],
+    "encoding": "Present symptom only; unreported symptoms are unknown"
+  }
+]

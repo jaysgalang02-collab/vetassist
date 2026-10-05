@@ -20,17 +20,17 @@ class PetDetailScreen extends StatelessWidget {
   Future<void> _deletePatient(BuildContext context, String patientId) async {
     final db = FirebaseFirestore.instance;
 
-    // Confirm first
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete pet'),
         content: const Text(
-          'This will remove the pet and related visits, vaccines and reminders. '
-          'This action cannot be undone.'
-        ),
+            'This will remove the pet and related visits, vaccines and reminders. '
+            'This action cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           FilledButton.tonal(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
@@ -40,34 +40,38 @@ class PetDetailScreen extends StatelessWidget {
     );
     if (ok != true) return;
 
-    // Cascade delete (visits, vaccines, reminders)
     final batch = db.batch();
 
-    // visits
-    final visits = await db.collection('visits').where('patientId', isEqualTo: patientId).get();
+    final visits = await db
+        .collection('visits')
+        .where('patientId', isEqualTo: patientId)
+        .get();
     for (final d in visits.docs) {
       batch.delete(d.reference);
     }
 
-    // vaccines
-    final vax = await db.collection('vaccines').where('patientId', isEqualTo: patientId).get();
+    final vax = await db
+        .collection('vaccines')
+        .where('patientId', isEqualTo: patientId)
+        .get();
     for (final d in vax.docs) {
       batch.delete(d.reference);
     }
 
-    // reminders
-    final rem = await db.collection('reminders').where('patientId', isEqualTo: patientId).get();
+    final rem = await db
+        .collection('reminders')
+        .where('patientId', isEqualTo: patientId)
+        .get();
     for (final d in rem.docs) {
       batch.delete(d.reference);
     }
 
-    // patient
     batch.delete(db.collection('patients').doc(patientId));
 
     await batch.commit();
 
     if (context.mounted) {
-      Navigator.pop(context); // back to list
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pet deleted')),
       );
@@ -103,8 +107,6 @@ class PetDetailScreen extends StatelessWidget {
                   tooltip: 'Edit',
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: () {
-                    // Navigate to the same PetForm screen you already use for adding.
-                    // Pass patientId so the form switches to edit mode (your form can check this).
                     Navigator.pushNamed(
                       context,
                       PetFormScreen.route,
@@ -130,8 +132,15 @@ class PetDetailScreen extends StatelessWidget {
                     }
                   },
                   itemBuilder: (ctx) => const [
-                    PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit), title: Text('Update'))),
-                    PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete_outline), title: Text('Delete'))),
+                    PopupMenuItem(
+                        value: 'edit',
+                        child: ListTile(
+                            leading: Icon(Icons.edit), title: Text('Update'))),
+                    PopupMenuItem(
+                        value: 'delete',
+                        child: ListTile(
+                            leading: Icon(Icons.delete_outline),
+                            title: Text('Delete'))),
                   ],
                 ),
               ],
